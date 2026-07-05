@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1017">
+<title>The Drawing Office — Crump &amp; Wainwright</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" fill="%230b1017" stroke="%23c9a227" stroke-width="3"/><path d="M14 46 L32 18 L50 46" fill="none" stroke="%23e9e0c9" stroke-width="3"/><line x1="22" y1="36" x2="42" y2="36" stroke="%23e9e0c9" stroke-width="3"/></svg>'>
+<link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+
+<header id="do-head">
+  <div id="do-title">
+    <b>THE DRAWING OFFICE</b>
+    <span>CRUMP &amp; WAINWRIGHT · DEPT. OF APPEARANCES</span>
+  </div>
+  <div id="do-actions">
+    <select id="do-preset" title="House styles from the pattern store"></select>
+    <button id="do-save" class="do-btn primary" title="Persist to this browser — the game reads it on next load">FILE WITH THE BOARD</button>
+    <button id="do-reset" class="do-btn" title="Discard everything and return to the factory finish">FACTORY FINISH</button>
+    <a id="do-play" class="do-btn" href="index.html" title="Open the game with the current saved finish">TO THE TERMINAL →</a>
+  </div>
+</header>
+
+<main id="do-main">
+  <section id="do-preview">
+    <canvas id="game"></canvas>
+    <div id="do-preview-bar">
+      <label>Glass <input type="range" id="do-zoom" min="0.4" max="3" step="0.05" value="1"></label>
+      <button id="do-fit" class="do-btn small">FIT SHEET</button>
+      <button id="do-motion" class="do-btn small active">MOTION</button>
+      <button id="do-distress" class="do-btn small active">DISTRESS DEMO</button>
+      <button id="do-resurvey" class="do-btn small">NEW SURVEY</button>
+      <span id="do-note">Drag to pan. Nothing here alters the gameplay.</span>
+    </div>
+  </section>
+
+  <aside id="do-panel">
+    <div id="do-controls"></div>
+    <details id="do-transfer">
+      <summary>CARBON COPIES — export &amp; import</summary>
+      <textarea id="do-json" spellcheck="false" placeholder="{ }"></textarea>
+      <div class="do-row">
+        <button id="do-export" class="do-btn small">WRITE OUT</button>
+        <button id="do-copy" class="do-btn small">COPY</button>
+        <button id="do-import" class="do-btn small">READ IN</button>
+      </div>
+      <div class="do-fineprint">A finish filed with the Board is kept in this browser only.
+        To move it between machines, carry the carbon copy by hand, as nature intended.</div>
+    </details>
+  </aside>
+</main>
+
+<div id="do-toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/copy.js"></script>
+<script src="js/glyphs.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/render.js"></script>
+<script src="js/design.js"></script>
+</body>
+</html>

@@ -27,7 +27,7 @@
 
   var ICONS = {
     ship: function (g, s) {
-      g.fillStyle = '#e9e0c9';
+      g.fillStyle = CW.theme.parch;
       g.beginPath();
       g.moveTo(s * 0.95, s * 0.5);          // bow
       g.lineTo(s * 0.68, s * 0.32);
@@ -43,26 +43,26 @@
       g.fillRect(s * 0.02, s * 0.54, s * 0.08, s * 0.06);
     },
     pod: function (g, s) {
-      g.strokeStyle = '#e9e0c9'; g.lineWidth = 2;
+      g.strokeStyle = CW.theme.parch; g.lineWidth = 2;
       g.strokeRect(s * 0.2, s * 0.3, s * 0.6, s * 0.45);
       g.beginPath(); g.moveTo(s * 0.2, s * 0.5); g.lineTo(s * 0.8, s * 0.5); g.stroke();
     },
     relay: function (g, s) {
-      g.strokeStyle = '#e9e0c9'; g.lineWidth = 2;
+      g.strokeStyle = CW.theme.parch; g.lineWidth = 2;
       g.beginPath();
       g.moveTo(s * 0.5, s * 0.12); g.lineTo(s * 0.82, s * 0.5);
       g.lineTo(s * 0.5, s * 0.88); g.lineTo(s * 0.18, s * 0.5);
       g.closePath(); g.stroke();
-      g.fillStyle = '#e9e0c9';
+      g.fillStyle = CW.theme.parch;
       g.beginPath(); g.arc(s * 0.5, s * 0.5, s * 0.1, 0, 7); g.fill();
     },
     hub: function (g, s) {
-      g.strokeStyle = '#e9e0c9'; g.lineWidth = 2;
+      g.strokeStyle = CW.theme.parch; g.lineWidth = 2;
       g.beginPath(); g.arc(s * 0.5, s * 0.5, s * 0.2, 0, 7); g.stroke();
       g.beginPath(); g.arc(s * 0.5, s * 0.5, s * 0.36, 0, 7); g.stroke();
     },
     crate: function (g, s) {
-      g.strokeStyle = '#e9e0c9'; g.lineWidth = 2;
+      g.strokeStyle = CW.theme.parch; g.lineWidth = 2;
       g.strokeRect(s * 0.18, s * 0.18, s * 0.64, s * 0.64);
       g.beginPath();
       g.moveTo(s * 0.18, s * 0.18); g.lineTo(s * 0.82, s * 0.82);
@@ -70,7 +70,7 @@
       g.stroke();
     },
     corridor: function (g, s) {
-      g.strokeStyle = '#e9e0c9'; g.lineWidth = 3; g.lineCap = 'round';
+      g.strokeStyle = CW.theme.parch; g.lineWidth = 3; g.lineCap = 'round';
       g.beginPath(); g.moveTo(s * 0.15, s * 0.7); g.lineTo(s * 0.5, s * 0.35); g.lineTo(s * 0.85, s * 0.55);
       g.stroke();
     },
@@ -79,7 +79,7 @@
   function glyphCanvas(typeId, size, mode) {
     return iconCanvas(size, function (g, s) {
       g.lineWidth = 2;
-      CW.drawGlyph(g, typeId, s / 2, s / 2, s * 0.36, mode || 'outline', '#e9e0c9');
+      CW.drawGlyph(g, typeId, s / 2, s / 2, s * 0.36, mode || 'outline', CW.theme.parch);
     });
   }
 

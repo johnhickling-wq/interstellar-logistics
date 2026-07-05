@@ -1,0 +1,256 @@
+/* The Drawing Office — where the company's appearance is decided,
+   argued over, and eventually signed off. Uses the same CSS variables
+   the game does, so the office redecorates itself as you work. */
+
+:root {
+  --ink: #0b1017;
+  --ink-raise: #121926;
+  --parch: #e9e0c9;
+  --parch-dim: rgba(233, 224, 201, 0.55);
+  --parch-faint: rgba(233, 224, 201, 0.22);
+  --brass: #c9a227;
+  --red: #d4574f;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--parch);
+  font-family: var(--sans);
+}
+
+/* ————— header ————— */
+#do-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--parch-faint);
+  background: var(--ink-raise);
+}
+#do-title b {
+  font-family: var(--serif);
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  display: block;
+}
+#do-title span {
+  font-size: 8.5px;
+  letter-spacing: 0.28em;
+  color: var(--parch-dim);
+}
+#do-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.do-btn {
+  font-family: var(--serif);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--parch);
+  background: none;
+  border: 1px solid var(--parch-faint);
+  border-radius: 3px;
+  padding: 6px 11px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.do-btn:hover { border-color: var(--parch-dim); }
+.do-btn.primary {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: #14100a;
+  font-weight: bold;
+}
+.do-btn.small { font-size: 9.5px; padding: 4px 8px; }
+.do-btn.active { border-color: var(--brass); color: var(--brass); }
+
+#do-preset {
+  background: var(--ink);
+  color: var(--parch);
+  border: 1px solid var(--parch-faint);
+  border-radius: 3px;
+  font-family: var(--serif);
+  font-size: 11px;
+  padding: 5px 6px;
+}
+
+/* ————— layout ————— */
+#do-main {
+  display: flex;
+  height: calc(100% - 49px);
+}
+
+#do-preview {
+  flex: 1;
+  position: relative;
+  min-width: 300px;
+}
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+#game:active { cursor: grabbing; }
+
+#do-preview-bar {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--parch-dim);
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+  border: 1px solid var(--parch-faint);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+#do-preview-bar label { display: flex; align-items: center; gap: 6px; letter-spacing: 0.1em; }
+#do-note { margin-left: auto; font-style: italic; }
+
+/* ————— control panel ————— */
+#do-panel {
+  width: 372px;
+  overflow-y: auto;
+  border-left: 1px solid var(--parch-faint);
+  background: var(--ink-raise);
+  padding-bottom: 30px;
+}
+
+.do-group { border-bottom: 1px solid var(--parch-faint); }
+.do-group > summary {
+  font-family: var(--serif);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--brass);
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.do-group > summary::before { content: '❧ '; color: var(--parch-dim); }
+.do-group[open] > summary { border-bottom: 1px dashed var(--parch-faint); }
+
+.do-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+}
+.do-item label {
+  flex: 0 0 128px;
+  font-size: 10.5px;
+  color: var(--parch-dim);
+  letter-spacing: 0.04em;
+}
+.do-item input[type="range"] { flex: 1; accent-color: var(--brass); min-width: 60px; }
+.do-item input[type="color"] {
+  width: 42px;
+  height: 24px;
+  border: 1px solid var(--parch-faint);
+  border-radius: 3px;
+  background: none;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.do-item .do-val {
+  flex: 0 0 46px;
+  font-size: 10px;
+  text-align: right;
+  color: var(--parch);
+  font-variant-numeric: tabular-nums;
+}
+.do-item .do-hex {
+  font-size: 10px;
+  color: var(--parch-dim);
+  font-family: monospace;
+  letter-spacing: 0.03em;
+}
+.do-item select {
+  flex: 1;
+  background: var(--ink);
+  color: var(--parch);
+  border: 1px solid var(--parch-faint);
+  border-radius: 3px;
+  font-size: 11px;
+  padding: 3px 4px;
+}
+
+/* ————— transfer drawer ————— */
+#do-transfer { border-bottom: 1px solid var(--parch-faint); }
+#do-transfer > summary {
+  font-family: var(--serif);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--parch-dim);
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+#do-json {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 4px 14px;
+  height: 110px;
+  background: var(--ink);
+  color: var(--parch);
+  border: 1px solid var(--parch-faint);
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 10.5px;
+  padding: 7px;
+  resize: vertical;
+}
+.do-row { display: flex; gap: 8px; padding: 4px 14px 8px; }
+.do-fineprint {
+  font-size: 9.5px;
+  font-style: italic;
+  color: var(--parch-dim);
+  padding: 0 14px 12px;
+  line-height: 1.5;
+}
+
+/* ————— toast ————— */
+#do-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--ink-raise);
+  border: 1px solid var(--parch-faint);
+  border-left: 3px solid var(--brass);
+  color: var(--parch);
+  font-family: var(--serif);
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 50;
+}
+#do-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ————— small screens ————— */
+@media (max-width: 760px) {
+  #do-main { flex-direction: column; }
+  #do-preview { min-height: 44%; }
+  #do-panel { width: 100%; flex: 1; border-left: none; border-top: 1px solid var(--parch-faint); }
+  #do-note { display: none; }
+}

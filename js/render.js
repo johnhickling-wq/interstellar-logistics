@@ -6,6 +6,10 @@
   'use strict';
   window.CW = window.CW || {};
 
+  // Visual constants live in theme.js (CW.theme); the Drawing Office
+  // edits them live. syncTheme() refreshes this module's working set
+  // once per frame so every draw call below stays cheap.
+  var TH = {};
   var INK = '#0b1017';
   var PARCH = '#e9e0c9';
   var PARCH_DIM = 'rgba(233,224,201,0.55)';
@@ -24,6 +28,25 @@
     '#4b6653', '#584f6e', '#665f44', '#4c5d72',
   ];
 
+  function syncTheme() {
+    TH = CW.theme;
+    if (!TH) { TH = {}; return; }
+    INK = TH.ink; PARCH = TH.parch;
+    PARCH_DIM = alphaColor(PARCH, 0.55);
+    AMBER = TH.amber; RED = TH.red;
+    SIZES.colonyR = TH.colonyR; SIZES.specialR = TH.specialR;
+    SIZES.glyphLine = TH.glyphLine; SIZES.crateR = TH.crateR;
+    SIZES.corridorW = TH.corridorW; SIZES.ringGap = TH.ringGap;
+    PLANET_TINTS = [TH.planet0, TH.planet1, TH.planet2, TH.planet3,
+      TH.planet4, TH.planet5, TH.planet6, TH.planet7];
+  }
+
+  // ink-family dark used for channels, shadows and recesses
+  function darkInk(a) {
+    var r = parseInt(INK.slice(1, 3), 16), g = parseInt(INK.slice(3, 5), 16), b = parseInt(INK.slice(5, 7), 16);
+    return 'rgba(' + Math.round(r * 0.75) + ',' + Math.round(g * 0.75) + ',' + Math.round(b * 0.78) + ',' + a + ')';
+  }
+
   var canvas, ctx, dpr = 1, W = 0, H = 0;
 
   var cam = { x: 0, y: 0, scale: 1, init: false };
@@ -40,7 +63,8 @@
   function makeStars(seedRng) {
     stars = [];
     var rnd = seedRng || Math.random;
-    for (var i = 0; i < 150; i++) {
+    var count = (CW.theme && CW.theme.starCount != null) ? CW.theme.starCount : 150;
+    for (var i = 0; i < count; i++) {
       stars.push({
         x: (rnd() - 0.5) * 3000, y: (rnd() - 0.5) * 2000,
         r: 0.4 + rnd() * 1.1, a: 0.08 + rnd() * 0.3,
@@ -52,6 +76,7 @@
   CW.initRenderer = function (canvasEl) {
     canvas = canvasEl;
     ctx = canvas.getContext('2d');
+    syncTheme();
     CW.resizeRenderer();
     makeStars();
   };
@@ -122,43 +147,47 @@
     ctx.fillStyle = INK;
     ctx.fillRect(0, 0, W, H);
     var vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.75);
-    vg.addColorStop(0, 'rgba(19,27,39,0.55)');
-    vg.addColorStop(1, 'rgba(4,6,10,0.9)');
+    vg.addColorStop(0, 'rgba(19,27,39,' + Math.min(1, 0.55 * TH.vignette).toFixed(3) + ')');
+    vg.addColorStop(1, darkInk(Math.min(1, 0.9 * TH.vignette)));
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, W, H);
   }
 
   function drawStars(t) {
+    if (TH.starBrightness <= 0) return;
     ctx.save();
     ctx.translate(W / 2, H / 2);
     ctx.scale(cam.scale, cam.scale);
     ctx.translate(-cam.x * 0.85, -cam.y * 0.85); // slight parallax
     stars.forEach(function (s) {
-      var a = s.a * (0.75 + 0.25 * Math.sin(t * s.tw + s.ph));
-      ctx.fillStyle = 'rgba(214,222,240,' + a.toFixed(3) + ')';
-      ctx.fillRect(s.x, s.y, s.r, s.r);
+      var a = s.a * (0.75 + 0.25 * Math.sin(t * s.tw + s.ph)) * TH.starBrightness;
+      ctx.fillStyle = alphaColor(TH.starColour, Math.min(1, a));
+      ctx.fillRect(s.x, s.y, s.r * TH.starSize, s.r * TH.starSize);
     });
     ctx.restore();
   }
 
   function drawSurveyGrid() {
-    ctx.strokeStyle = 'rgba(233,224,201,0.05)';
+    if (TH.gridOpacity <= 0) return;
+    ctx.strokeStyle = alphaColor(PARCH, Math.min(1, 0.05 * TH.gridOpacity));
     ctx.lineWidth = 1 / cam.scale;
-    for (var r = 150; r <= 1200; r += 150) {
+    var step = Math.max(50, TH.gridSpacing);
+    for (var r = step; r <= 1200; r += step) {
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
     }
-    ctx.strokeStyle = 'rgba(233,224,201,0.032)';
-    for (var i = 0; i < 12; i++) {
-      var a = (i / 12) * Math.PI * 2;
+    ctx.strokeStyle = alphaColor(PARCH, Math.min(1, 0.032 * TH.gridOpacity));
+    var radials = Math.max(0, Math.round(TH.gridRadials));
+    for (var i = 0; i < radials; i++) {
+      var a = (i / radials) * Math.PI * 2;
       ctx.beginPath();
       ctx.moveTo(Math.cos(a) * 70, Math.sin(a) * 70);
       ctx.lineTo(Math.cos(a) * 1220, Math.sin(a) * 1220);
       ctx.stroke();
     }
     // origin datum mark
-    ctx.strokeStyle = 'rgba(233,224,201,0.12)';
+    ctx.strokeStyle = alphaColor(PARCH, Math.min(1, 0.12 * TH.gridOpacity));
     ctx.beginPath();
     ctx.moveTo(-8, 0); ctx.lineTo(8, 0);
     ctx.moveTo(0, -8); ctx.lineTo(0, 8);
@@ -171,16 +200,18 @@
   // without a Beacon Relay.
   function drawNebulae(game, t) {
     game.nebulae.forEach(function (neb, ni) {
-      var hue = neb.hue;
+      var hue = neb.hue + TH.nebulaHueShift;
+      var sat = function (s) { return Math.max(0, Math.min(100, s * TH.nebulaSat)).toFixed(1); };
 
       // pass 1 — luminous body
+      var bodyA = 0.26 * TH.nebulaGlow, bodyB = 0.14 * TH.nebulaGlow;
       neb.blobs.forEach(function (b, i) {
         var wob = 1 + 0.05 * Math.sin(t * 0.4 + i * 1.7 + ni * 3);
         var r = b.r * wob;
         var g = ctx.createRadialGradient(b.x, b.y, r * 0.08, b.x, b.y, r);
-        g.addColorStop(0, 'hsla(' + hue + ',60%,52%,0.26)');
-        g.addColorStop(0.65, 'hsla(' + hue + ',58%,42%,0.14)');
-        g.addColorStop(1, 'hsla(' + hue + ',55%,34%,0)');
+        g.addColorStop(0, 'hsla(' + hue + ',' + sat(60) + '%,52%,' + bodyA.toFixed(3) + ')');
+        g.addColorStop(0.65, 'hsla(' + hue + ',' + sat(58) + '%,42%,' + bodyB.toFixed(3) + ')');
+        g.addColorStop(1, 'hsla(' + hue + ',' + sat(55) + '%,34%,0)');
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
@@ -188,14 +219,15 @@
       });
 
       // pass 2 — drifting inner wisps
+      var wispA = 0.10 * TH.nebulaWisps;
       for (var wi = 0; wi < neb.blobs.length; wi += 2) {
         var b2 = neb.blobs[wi];
         var ox = Math.sin(t * 0.22 + wi * 2.3) * b2.r * 0.34;
         var oy = Math.cos(t * 0.17 + wi * 1.1) * b2.r * 0.3;
         var wr = b2.r * 0.5;
         var g2 = ctx.createRadialGradient(b2.x + ox, b2.y + oy, 1, b2.x + ox, b2.y + oy, wr);
-        g2.addColorStop(0, 'hsla(' + hue + ',75%,70%,0.10)');
-        g2.addColorStop(1, 'hsla(' + hue + ',75%,70%,0)');
+        g2.addColorStop(0, 'hsla(' + hue + ',' + sat(75) + '%,70%,' + wispA.toFixed(3) + ')');
+        g2.addColorStop(1, 'hsla(' + hue + ',' + sat(75) + '%,70%,0)');
         ctx.fillStyle = g2;
         ctx.beginPath();
         ctx.arc(b2.x + ox, b2.y + oy, wr, 0, Math.PI * 2);
@@ -214,11 +246,11 @@
         x1 = Math.max(x1, b.x + b.r); y1 = Math.max(y1, b.y + b.r);
       });
       ctx.clip();
-      ctx.strokeStyle = 'hsla(' + hue + ',80%,82%,0.07)';
+      ctx.strokeStyle = 'hsla(' + hue + ',' + sat(80) + '%,82%,' + (0.07 * TH.nebulaHatch).toFixed(3) + ')';
       ctx.lineWidth = 1;
       ctx.beginPath();
       var span = (y1 - y0);
-      for (var k = x0 - span; k < x1; k += 17) {
+      for (var k = x0 - span; k < x1; k += Math.max(6, TH.hatchSpacing)) {
         ctx.moveTo(k, y1);
         ctx.lineTo(k + span, y0);
       }
@@ -226,7 +258,8 @@
       ctx.restore();
 
       // pass 4 — ionisation sparks
-      ctx.fillStyle = 'hsla(' + hue + ',90%,85%,0.7)';
+      if (TH.nebulaSparks <= 0) return;
+      ctx.fillStyle = 'hsla(' + hue + ',' + sat(90) + '%,85%,' + Math.min(1, 0.7 * TH.nebulaSparks).toFixed(3) + ')';
       for (var s = 0; s < neb.blobs.length; s++) {
         var b3 = neb.blobs[s];
         var ph = Math.sin(t * 2.1 + s * 4.7);
@@ -273,7 +306,7 @@
     ctx.globalAlpha = active ? 1 : 0.55;
 
     // ambient field
-    ctx.strokeStyle = alphaColor(colour, 0.10);
+    ctx.strokeStyle = alphaColor(colour, Math.min(1, 0.10 * TH.conduitGlow));
     ctx.lineWidth = outer * 2.4;
     tracePath(pts, loop); ctx.stroke();
 
@@ -283,20 +316,23 @@
     tracePath(pts, loop); ctx.stroke();
 
     // hollow the channel: leaves two thin rails
-    ctx.strokeStyle = 'rgba(10,14,20,0.93)';
-    ctx.lineWidth = outer - 3;
-    tracePath(pts, loop); ctx.stroke();
+    var hollow = Math.max(0, outer - TH.conduitHollow);
+    if (hollow > 0) {
+      ctx.strokeStyle = darkInk(0.93);
+      ctx.lineWidth = hollow;
+      tracePath(pts, loop); ctx.stroke();
 
-    // faint luminous interior
-    ctx.strokeStyle = alphaColor(colour, 0.14);
-    ctx.lineWidth = outer - 3;
-    tracePath(pts, loop); ctx.stroke();
+      // faint luminous interior
+      ctx.strokeStyle = alphaColor(colour, Math.min(1, 0.14 * TH.conduitGlow));
+      ctx.lineWidth = hollow;
+      tracePath(pts, loop); ctx.stroke();
+    }
 
     if (active) {
       // travelling energy pulses
-      ctx.setLineDash([3, 13]);
-      ctx.lineDashOffset = -(t * 26) % 16;
-      ctx.strokeStyle = alphaColor(colour, 0.55);
+      ctx.setLineDash([TH.pulseLen, TH.pulseGap]);
+      ctx.lineDashOffset = -(t * TH.pulseSpeed) % (TH.pulseLen + TH.pulseGap);
+      ctx.strokeStyle = alphaColor(colour, TH.pulseAlpha);
       ctx.lineWidth = 1.8;
       tracePath(pts, loop); ctx.stroke();
     } else {
@@ -379,10 +415,11 @@
         var colour = CW.CORRIDOR_COLOURS[cor.colourIdx].hex;
         ctx.save();
         ctx.translate(mx, my);
+        ctx.scale(TH.relayScale, TH.relayScale);
         // stabilised clearing around the beacon
         var cg = ctx.createRadialGradient(0, 0, 2, 0, 0, 26);
-        cg.addColorStop(0, 'rgba(10,14,20,0.55)');
-        cg.addColorStop(1, 'rgba(10,14,20,0)');
+        cg.addColorStop(0, darkInk(0.55));
+        cg.addColorStop(1, darkInk(0));
         ctx.fillStyle = cg;
         ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill();
         // the relay pylon
@@ -443,13 +480,13 @@
       ctx.fillStyle = PARCH;
       roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
       ctx.fill();
-      CW.drawGlyph(ctx, crate.type, cx, cy, cell * 0.40, 'solid', 'rgba(10,14,20,0.9)');
+      CW.drawGlyph(ctx, crate.type, cx, cy, cell * 0.40, 'solid', darkInk(0.9));
     } else {
       // empty bay: a visible recessed slot
-      ctx.fillStyle = 'rgba(10,14,20,0.45)';
+      ctx.fillStyle = darkInk(0.45);
       roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(233,224,201,0.22)';
+      ctx.strokeStyle = alphaColor(PARCH, 0.22);
       ctx.lineWidth = 0.7;
       roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
       ctx.stroke();
@@ -476,12 +513,12 @@
       var ang = ship.angle || 0;
 
       // engine trail
-      if (ship.trail && ship.trail.length > 1 && ship.state === 'move') {
+      if (ship.trail && ship.trail.length > 1 && ship.state === 'move' && TH.trailAlpha > 0) {
         ctx.save();
         ctx.lineCap = 'round';
         for (var i = 1; i < ship.trail.length; i++) {
           var f = i / ship.trail.length;
-          ctx.strokeStyle = alphaColor(colour, 0.30 * f);
+          ctx.strokeStyle = alphaColor(colour, Math.min(1, 0.30 * f * TH.trailAlpha));
           ctx.lineWidth = 2.8 * f;
           ctx.beginPath();
           ctx.moveTo(ship.trail[i - 1].x, ship.trail[i - 1].y);
@@ -495,13 +532,13 @@
       ctx.translate(ship.x, ship.y);
       ctx.rotate(ang);
 
-      var L = 30, Wd = 11;
+      var L = TH.shipL, Wd = TH.shipW;
       var hullDark = mix(colour, '#0a0e14', 0.45);
 
       // exhaust (only under way)
-      if (ship.state === 'move') {
-        var lick = 5 + 2.4 * Math.sin(t * 21 + ship.id * 3);
-        ctx.fillStyle = 'rgba(255,214,140,0.5)';
+      if (ship.state === 'move' && TH.exhaust > 0) {
+        var lick = (5 + 2.4 * Math.sin(t * 21 + ship.id * 3)) * TH.exhaust;
+        ctx.fillStyle = 'rgba(255,214,140,' + Math.min(1, 0.5 * TH.exhaust).toFixed(3) + ')';
         [[-Wd * 0.22], [Wd * 0.22]].forEach(function (off) {
           ctx.beginPath();
           ctx.moveTo(-L / 2 - 0.5, off[0] - 1.6);
@@ -528,13 +565,13 @@
         ctx.lineTo(L / 2 - 3, Wd * 0.34 + g2);
         ctx.closePath();
       }
-      ctx.fillStyle = 'rgba(6,8,12,0.75)';
+      ctx.fillStyle = darkInk(0.75);
       hullPath(1.6);
       ctx.fill();
       ctx.fillStyle = colour;
       hullPath(0);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(233,224,201,0.75)';
+      ctx.strokeStyle = alphaColor(PARCH, TH.shipTrim);
       ctx.lineWidth = 0.9;
       hullPath(0);
       ctx.stroke();
@@ -554,13 +591,13 @@
       ctx.fillStyle = hullDark;
       roundRect(-L / 2 - 0.5, -Wd * 0.3, 3.4, Wd * 0.6, 1);
       ctx.fill();
-      ctx.fillStyle = 'rgba(233,224,201,0.9)';
+      ctx.fillStyle = alphaColor(PARCH, 0.9);
       ctx.beginPath();
       ctx.arc(L / 2 - 0.5, 0, 1.5, 0, Math.PI * 2);
       ctx.fill();
 
       // container bays: 2 × 3 on the hull spine
-      var cell = 5.6;
+      var cell = TH.cargoCell;
       var hullSlots = Math.min(cfg.shipCapacity, 6);
       for (var slot = 0; slot < hullSlots; slot++) {
         var col = Math.floor(slot / 2), row = slot % 2;
@@ -569,23 +606,24 @@
         drawContainer(cx, cy, cell, ship.cargo[slot]);
       }
 
-      // towed pod barges, 6 containers each
+      // towed pod barges, 6 containers each — sized from the cell
+      var bargeW = (cell + 0.9) * 3 + 1.5, bargeH = cell * 2 + 1.6;
       for (var pd = 0; pd < ship.pods; pd++) {
-        var bx = -L / 2 - 5 - pd * 23;   // barge centre x
+        var bx = -L / 2 - 5 - pd * (bargeW + 2.5);   // barge centre x
         // coupling
         ctx.strokeStyle = alphaColor(colour, 0.7);
         ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.moveTo(bx + 11, 0);
-        ctx.lineTo(bx + 14.5, 0);
+        ctx.moveTo(bx + bargeW / 2, 0);
+        ctx.lineTo(bx + bargeW / 2 + 3.5, 0);
         ctx.stroke();
         ctx.fillStyle = mix(colour, '#0a0e14', 0.25);
-        roundRect(bx - 10.5, -5.6, 21, 11.2, 2);
+        roundRect(bx - bargeW / 2, -bargeH / 2, bargeW, bargeH, 2);
         ctx.fill();
         for (var ps = 0; ps < 6; ps++) {
           var pcol = Math.floor(ps / 2), prow = ps % 2;
-          var pcx = bx + 6.4 - pcol * (cell + 0.8);
-          var pcy = prow === 0 ? -2.9 : 2.9;
+          var pcx = bx + bargeW / 2 - cell / 2 - 1.3 - pcol * (cell + 0.8);
+          var pcy = (prow === 0 ? -1 : 1) * (cell / 2 + 0.3);
           drawContainer(pcx, pcy, cell - 0.4, ship.cargo[6 + pd * 6 + ps]);
         }
       }
@@ -601,11 +639,11 @@
 
     // designated colonies are ringed worlds — the ring peeks out
     // behind the disc, drawn first so the planet occludes its middle
-    if (special) {
+    if (special && TH.specialRing > 0) {
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.rotate(-0.45 + (h % 5) * 0.09);
-      ctx.strokeStyle = 'rgba(233,224,201,' + (0.5 * bright).toFixed(3) + ')';
+      ctx.strokeStyle = alphaColor(PARCH, Math.min(1, 0.5 * bright * TH.specialRing));
       ctx.lineWidth = 1.7;
       ctx.beginPath();
       ctx.ellipse(0, 0, R * 1.7, R * 0.52, 0, 0, Math.PI * 2);
@@ -615,9 +653,9 @@
 
     // sphere
     var g = ctx.createRadialGradient(c.x - R * 0.38, c.y - R * 0.42, R * 0.12, c.x, c.y, R * 1.02);
-    g.addColorStop(0, mix(tint, '#dfe8f2', 0.32));
+    g.addColorStop(0, mix(tint, '#dfe8f2', TH.planetLight));
     g.addColorStop(0.55, tint);
-    g.addColorStop(1, mix(tint, '#05070b', 0.62));
+    g.addColorStop(1, mix(tint, '#05070b', TH.planetShade));
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
@@ -631,7 +669,7 @@
     if (h & 1) {
       // banded world
       var tilt = ((h >> 3) % 7 - 3) * 0.06;
-      ctx.strokeStyle = 'rgba(8,10,16,0.16)';
+      ctx.strokeStyle = darkInk(Math.min(1, 0.16 * TH.surfaceDetail));
       ctx.lineWidth = R * 0.17;
       [-0.42, 0.05, 0.5].forEach(function (yy, bi) {
         ctx.beginPath();
@@ -641,7 +679,7 @@
       });
     } else {
       // cratered world
-      ctx.fillStyle = 'rgba(8,10,16,0.18)';
+      ctx.fillStyle = darkInk(Math.min(1, 0.18 * TH.surfaceDetail));
       for (var ci = 0; ci < 3; ci++) {
         var ca = ((h >> (ci * 4)) % 100) / 100 * Math.PI * 2;
         var cr = R * (0.42 + ((h >> (ci * 3)) % 40) / 100);
@@ -652,15 +690,15 @@
     }
     // terminator: night side to lower-right
     var tg = ctx.createRadialGradient(c.x - R * 0.5, c.y - R * 0.5, R * 0.4, c.x - R * 0.5, c.y - R * 0.5, R * 2.1);
-    tg.addColorStop(0, 'rgba(5,7,11,0)');
-    tg.addColorStop(0.72, 'rgba(5,7,11,0)');
-    tg.addColorStop(1, 'rgba(5,7,11,0.55)');
+    tg.addColorStop(0, darkInk(0));
+    tg.addColorStop(0.72, darkInk(0));
+    tg.addColorStop(1, darkInk(Math.min(1, 0.55 * TH.terminator)));
     ctx.fillStyle = tg;
     ctx.fillRect(c.x - R, c.y - R, R * 2, R * 2);
     ctx.restore();
 
     // thin atmospheric limb on the lit side
-    ctx.strokeStyle = 'rgba(220,230,240,' + (0.22 * bright).toFixed(3) + ')';
+    ctx.strokeStyle = 'rgba(220,230,240,' + Math.min(1, 0.22 * bright * TH.limbLight).toFixed(3) + ')';
     ctx.lineWidth = 1.1;
     ctx.beginPath();
     ctx.arc(c.x, c.y, R - 0.6, Math.PI * 0.8, Math.PI * 1.75);
@@ -668,7 +706,7 @@
 
     // reserves failing: the world goes dark
     if (bright < 1) {
-      ctx.fillStyle = 'rgba(5,7,11,' + ((1 - bright) * 0.6).toFixed(3) + ')';
+      ctx.fillStyle = darkInk((1 - bright) * 0.6);
       ctx.beginPath();
       ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
       ctx.fill();
@@ -684,8 +722,8 @@
 
       // halo glow
       var g = ctx.createRadialGradient(c.x, c.y, R * 0.4, c.x, c.y, R * 2.3);
-      g.addColorStop(0, 'rgba(233,224,201,' + (0.12 * bright).toFixed(3) + ')');
-      g.addColorStop(1, 'rgba(233,224,201,0)');
+      g.addColorStop(0, alphaColor(PARCH, Math.min(1, 0.12 * bright * TH.halo)));
+      g.addColorStop(1, alphaColor(PARCH, 0));
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(c.x, c.y, R * 2.3, 0, Math.PI * 2);
@@ -695,7 +733,7 @@
 
       // hub: an outer orbital works ring
       if (c.isHub) {
-        ctx.strokeStyle = 'rgba(233,224,201,' + (0.85 * bright).toFixed(3) + ')';
+        ctx.strokeStyle = alphaColor(PARCH, Math.min(1, 0.85 * bright));
         ctx.lineWidth = 1.6;
         ctx.beginPath();
         ctx.arc(c.x, c.y, R + SIZES.ringGap + 5.5, 0, Math.PI * 2);
@@ -707,13 +745,13 @@
       if (c.starve === null) {
         var warn = c.reserve <= 0.4;
         ctx.strokeStyle = !warn ? PARCH_DIM
-          : alphaColor(c.reserve > 0.15 ? '#dca94b' : '#d4574f', 0.9);
-        ctx.lineWidth = warn ? 3.2 : 2.6;
+          : alphaColor(c.reserve > 0.15 ? AMBER : RED, 0.9);
+        ctx.lineWidth = warn ? TH.ringWidth + 0.6 : TH.ringWidth;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, c.reserve));
         ctx.stroke();
         // ghost of full ring
-        ctx.strokeStyle = 'rgba(233,224,201,0.10)';
+        ctx.strokeStyle = alphaColor(PARCH, 0.10);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2);
@@ -740,7 +778,7 @@
 
       // delivery pulse
       if (c.pulse > 0) {
-        ctx.strokeStyle = alphaColor('#e9e0c9', c.pulse * 0.6);
+        ctx.strokeStyle = alphaColor(PARCH, c.pulse * 0.6);
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR + (1 - c.pulse) * 14, 0, Math.PI * 2);
@@ -749,11 +787,11 @@
 
       // the glyph — the world IS its unmet need. Drop shadow first so
       // it stays legible over any planet tint.
-      var gr = R * 0.56;
+      var gr = R * TH.glyphScale;
       ctx.lineWidth = SIZES.glyphLine;
-      CW.drawGlyph(ctx, c.type, c.x + 0.9, c.y + 1.2, gr, 'outline', 'rgba(4,6,10,0.55)');
-      CW.drawGlyph(ctx, c.type, c.x, c.y, gr, 'outline', alphaColor('#e9e0c9', Math.min(1, bright)));
-      CW.drawGlyphDetail(ctx, c.type, c.x, c.y, gr, alphaColor('#e9e0c9', bright * 0.5));
+      CW.drawGlyph(ctx, c.type, c.x + 0.9, c.y + 1.2, gr, 'outline', darkInk(0.55));
+      CW.drawGlyph(ctx, c.type, c.x, c.y, gr, 'outline', alphaColor(PARCH, Math.min(1, bright)));
+      CW.drawGlyphDetail(ctx, c.type, c.x, c.y, gr, alphaColor(PARCH, bright * 0.5));
 
       // waiting crates, queued beside the colony
       drawQueue(game, c, R);
@@ -761,7 +799,7 @@
       // assign-mode target pulse
       if (CW.assignMode === 'hub' && !c.isHub) {
         var pa = 0.35 + 0.3 * Math.sin(t * 5);
-        ctx.strokeStyle = alphaColor('#e9e0c9', pa);
+        ctx.strokeStyle = alphaColor(PARCH, pa);
         ctx.lineWidth = 1.6;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
@@ -781,7 +819,7 @@
     }
     if (c.queue.length > maxDraw) {
       ctx.fillStyle = PARCH_DIM;
-      ctx.font = '9px Georgia, serif';
+      ctx.font = '9px ' + (CW.themeFont || 'Georgia, serif');
       ctx.fillText('+' + (c.queue.length - maxDraw), qx, qy + 3 * 12.5);
     }
   }
@@ -793,7 +831,7 @@
       if (e.kind === 'delivery') return; // colony pulse covers it
       var f = Math.min(1, age / 1.6);
       if (e.kind === 'spawn' || e.kind === 'transform') {
-        var col = e.kind === 'transform' ? '#c9a227' : '#e9e0c9';
+        var col = e.kind === 'transform' ? TH.brass : PARCH;
         for (var i = 0; i < 2; i++) {
           var ff = Math.max(0, Math.min(1, f * 1.3 - i * 0.25));
           if (ff <= 0 || ff >= 1) continue;
@@ -819,6 +857,7 @@
   // ------------------------------------------------------ frame
   CW.renderFrame = function (game, dt, wallT) {
     if (!ctx) return;
+    syncTheme();
     if (canvas.clientWidth !== W || canvas.clientHeight !== H) CW.resizeRenderer();
     updateCamera(game, dt);
     var t = wallT;

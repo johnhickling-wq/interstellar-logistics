@@ -84,11 +84,46 @@ Suggested first knobs when tuning for "fun and addictive":
 Numbers all live in `js/config.js` (`CW.DEFAULTS`), including the panel's
 slider ranges (`CW.TUNING_SCHEMA`).
 
+## The Drawing Office (appearance studio)
+
+Open **`design.html`** — a separate companion app for designing the look
+and feel of the game without touching gameplay. It runs the *real*
+simulation and the *real* renderer on a small scripted showcase network
+(routes in several liveries, a nebula crossing with its relay beacon, an
+orbital hub, pod barges, busy cargo yards, and one permanently — and
+harmlessly — distressed colony) so every visual state stays on screen
+while you work.
+
+Every visual number and colour is editable live, in eight drawers:
+
+- **Palette** — inks, parchment, brass, distress red, starlight, lettering;
+- **Corridor livery** and **planet tints** (all eight of each);
+- **Background & survey chart** — stars, vignette, grid rings and radials;
+- **Nebulae** — glow, wisps, hatching, sparks, hue shift, saturation;
+- **Planets** — radii, shading, halo, glyphs, reserve rings;
+- **Hyperspace conduits** — width, glow, rail hollow, energy pulses, relays;
+- **Vessels** — hull dimensions, trim, exhaust, engine trail, containers.
+
+Preview controls: a zoom glass, drag to pan, motion pause, a distress-demo
+toggle, and **New Survey** for a freshly generated sheet.
+
+- **File with the Board** saves the finish to this browser (localStorage);
+  the game reads it on next load. **Factory Finish** discards everything.
+- **House styles** — *Blueprint* (cyanotype), *Gaslight* (warm sepia) and
+  *Signal Room* (phosphor terminal) ship as starting points.
+- **Carbon copies** — export/import the finish as JSON to carry it
+  between machines.
+
+The theme system lives in `js/theme.js` (`CW.THEME_DEFAULTS`,
+`CW.THEME_SCHEMA`, `CW.THEME_PRESETS`); the renderer re-reads the theme
+every frame, so changes land instantly.
+
 ## Architecture
 
 | File | Responsibility |
 |---|---|
-| `js/config.js` | every tunable, defaults, persistence of overrides |
+| `js/config.js` | every gameplay tunable, defaults, persistence of overrides |
+| `js/theme.js`  | every visual tunable and colour, house styles, persistence |
 | `js/copy.js`   | the company voice: names, memos, manifest quips |
 | `js/glyphs.js` | the ten cargo glyphs as canvas vector paths |
 | `js/sim.js`    | the entire simulation — colonies, crates, corridors, ships, routing (multi-source BFS per cargo type), starvation, spawning, weekly reviews |
@@ -97,6 +132,7 @@ slider ranges (`CW.TUNING_SCHEMA`).
 | `js/ui.js`     | HUD, memoranda, Ship's Manifest, toasts, tooltip |
 | `js/devpanel.js` | the Tuning Office |
 | `js/main.js`   | assembly and the main loop |
+| `design.html` + `js/design.js` | the Drawing Office appearance studio |
 
 Design rules honoured throughout, per the concept documents: a colony never
 produces the cargo type it consumes; crates match colony *types*, never
