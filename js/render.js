@@ -1,22 +1,28 @@
 /* render.js — canvas renderer. The player is not looking at space; they
    are looking at the holographic route chart of an Interstellar
-   Logistics Command terminal: deep ink, a polar survey grid, parchment
-   glyphs and thin corridors of company livery. */
+   Logistics Command terminal: deep ink, a polar survey grid, stylised
+   planets, twin-rail hyperspace conduits and charted nebula hazards. */
 (function () {
   'use strict';
   window.CW = window.CW || {};
 
-  var INK = '#0b1017';           // page background lives in CSS too
+  var INK = '#0b1017';
   var PARCH = '#e9e0c9';
   var PARCH_DIM = 'rgba(233,224,201,0.55)';
   var AMBER = '#dca94b';
   var RED = '#d4574f';
 
   var SIZES = {
-    colonyR: 13, specialR: 16.5, glyphLine: 2.4,
-    crateR: 5.4, corridorW: 3.6, ringGap: 7,
+    colonyR: 15, specialR: 19, glyphLine: 2.5,
+    crateR: 5.4, corridorW: 7.2, ringGap: 7,
   };
   CW.SIZES = SIZES;
+
+  // muted planetary tints; the glyph stays parchment on all of them
+  var PLANET_TINTS = [
+    '#46587a', '#4b6a6c', '#6b584a', '#6a4c5a',
+    '#4b6653', '#584f6e', '#665f44', '#4c5d72',
+  ];
 
   var canvas, ctx, dpr = 1, W = 0, H = 0;
 
@@ -65,8 +71,8 @@
       minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x);
       minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y);
     });
-    var m = 95;
-    minX -= m; maxX += m + 40; minY -= m; maxY += m;
+    var m = 100;
+    minX -= m; maxX += m + 42; minY -= m; maxY += m;
     var bw = Math.max(maxX - minX, 260), bh = Math.max(maxY - minY, 200);
     var padX = 40, padTop = 58, padBot = 74;
     var ts = Math.min((W - padX * 2) / bw, (H - padTop - padBot) / bh);
@@ -83,16 +89,36 @@
   CW.remakeStars = function () { makeStars(); };
 
   // ------------------------------------------------------ helpers
+  function chan(hex) {
+    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
   function alphaColor(hex, a) {
-    var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    var c = chan(hex);
+    return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')';
+  }
+  function mix(hexA, hexB, f) {
+    var a = chan(hexA), b = chan(hexB);
+    var r = Math.round(a[0] + (b[0] - a[0]) * f);
+    var g = Math.round(a[1] + (b[1] - a[1]) * f);
+    var bl = Math.round(a[2] + (b[2] - a[2]) * f);
+    return 'rgb(' + r + ',' + g + ',' + bl + ')';
+  }
+  function hashId(id) {
+    var h = id | 0;
+    h = Math.imul(h ^ 61, 0x27d4eb2d);
+    h ^= h >>> 15;
+    h = Math.imul(h, 0x2545f491);
+    return (h ^ (h >>> 13)) >>> 0;
   }
   function flick(t, id) {
     return 0.72 + 0.28 * Math.sin(t * 13 + id * 7.3) * Math.sin(t * 29 + id * 3.1);
   }
+  function colonyRadius(c) {
+    return CW.TYPE_BY_ID[c.type].common ? SIZES.colonyR : SIZES.specialR;
+  }
 
   // ------------------------------------------------------ background
-  function drawBackground(game, t) {
+  function drawBackground() {
     ctx.fillStyle = INK;
     ctx.fillRect(0, 0, W, H);
     var vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.75);
@@ -140,59 +166,147 @@
   }
 
   // ------------------------------------------------------ nebulae
+  // Rendered as charted hazard regions: luminous ionised body, drifting
+  // wisps, survey hatching and sparks. Corridors may not pass through
+  // without a Beacon Relay.
   function drawNebulae(game, t) {
     game.nebulae.forEach(function (neb, ni) {
+      var hue = neb.hue;
+
+      // pass 1 — luminous body
       neb.blobs.forEach(function (b, i) {
-        var wob = 1 + 0.06 * Math.sin(t * 0.4 + i * 1.7 + ni * 3);
+        var wob = 1 + 0.05 * Math.sin(t * 0.4 + i * 1.7 + ni * 3);
         var r = b.r * wob;
-        var g = ctx.createRadialGradient(b.x, b.y, r * 0.1, b.x, b.y, r);
-        var h = neb.hue;
-        g.addColorStop(0, 'hsla(' + h + ',48%,44%,0.16)');
-        g.addColorStop(0.7, 'hsla(' + h + ',52%,36%,0.10)');
-        g.addColorStop(1, 'hsla(' + h + ',55%,30%,0)');
+        var g = ctx.createRadialGradient(b.x, b.y, r * 0.08, b.x, b.y, r);
+        g.addColorStop(0, 'hsla(' + hue + ',60%,52%,0.26)');
+        g.addColorStop(0.65, 'hsla(' + hue + ',58%,42%,0.14)');
+        g.addColorStop(1, 'hsla(' + hue + ',55%,34%,0)');
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
         ctx.fill();
       });
-      // ionisation sparkles
-      ctx.fillStyle = 'rgba(216,190,255,0.5)';
+
+      // pass 2 — drifting inner wisps
+      for (var wi = 0; wi < neb.blobs.length; wi += 2) {
+        var b2 = neb.blobs[wi];
+        var ox = Math.sin(t * 0.22 + wi * 2.3) * b2.r * 0.34;
+        var oy = Math.cos(t * 0.17 + wi * 1.1) * b2.r * 0.3;
+        var wr = b2.r * 0.5;
+        var g2 = ctx.createRadialGradient(b2.x + ox, b2.y + oy, 1, b2.x + ox, b2.y + oy, wr);
+        g2.addColorStop(0, 'hsla(' + hue + ',75%,70%,0.10)');
+        g2.addColorStop(1, 'hsla(' + hue + ',75%,70%,0)');
+        ctx.fillStyle = g2;
+        ctx.beginPath();
+        ctx.arc(b2.x + ox, b2.y + oy, wr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // pass 3 — survey hatching, clipped to the region (a charted
+      // "keep out" wash straight off a company drawing)
+      var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      ctx.save();
+      ctx.beginPath();
+      neb.blobs.forEach(function (b) {
+        ctx.moveTo(b.x + b.r * 0.86, b.y);
+        ctx.arc(b.x, b.y, b.r * 0.86, 0, Math.PI * 2);
+        x0 = Math.min(x0, b.x - b.r); y0 = Math.min(y0, b.y - b.r);
+        x1 = Math.max(x1, b.x + b.r); y1 = Math.max(y1, b.y + b.r);
+      });
+      ctx.clip();
+      ctx.strokeStyle = 'hsla(' + hue + ',80%,82%,0.07)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      var span = (y1 - y0);
+      for (var k = x0 - span; k < x1; k += 17) {
+        ctx.moveTo(k, y1);
+        ctx.lineTo(k + span, y0);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // pass 4 — ionisation sparks
+      ctx.fillStyle = 'hsla(' + hue + ',90%,85%,0.7)';
       for (var s = 0; s < neb.blobs.length; s++) {
-        var b2 = neb.blobs[s];
+        var b3 = neb.blobs[s];
         var ph = Math.sin(t * 2.1 + s * 4.7);
-        if (ph > 0.86) {
-          var sx = b2.x + Math.sin(s * 13.7 + t * 0.2) * b2.r * 0.5;
-          var sy = b2.y + Math.cos(s * 7.9 + t * 0.13) * b2.r * 0.5;
-          ctx.fillRect(sx, sy, 1.6, 1.6);
+        if (ph > 0.78) {
+          var sx = b3.x + Math.sin(s * 13.7 + t * 0.2) * b3.r * 0.55;
+          var sy = b3.y + Math.cos(s * 7.9 + t * 0.13) * b3.r * 0.55;
+          ctx.fillRect(sx, sy, 1.8, 1.8);
         }
       }
     });
   }
 
   // ------------------------------------------------------ corridors
-  function corridorPoints(cor) { return cor.path || []; }
-
-  function strokePath(pts, loop, colour, width, dash, glow) {
-    if (pts.length < 2) return;
-    ctx.save();
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    if (dash) ctx.setLineDash(dash);
-    if (glow) {
-      ctx.strokeStyle = alphaColor(colour, 0.13);
-      ctx.lineWidth = width * 2.6;
-      tracePath(pts, loop); ctx.stroke();
-    }
-    ctx.strokeStyle = colour;
-    ctx.lineWidth = width;
-    tracePath(pts, loop); ctx.stroke();
-    ctx.restore();
-  }
   function tracePath(pts, loop) {
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
     if (loop) ctx.closePath();
+  }
+
+  // simple stroked path — still used for highlights and elastics
+  function strokePath(pts, loop, colour, width, dash) {
+    if (pts.length < 2) return;
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    if (dash) ctx.setLineDash(dash);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
+    tracePath(pts, loop);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* A hyperspace conduit: soft field glow, twin containment rails with
+     a dark channel between them, and a slow pulse of energy travelling
+     the channel. Deliberately nothing like a metro line. */
+  function drawConduit(pts, loop, colour, t, active) {
+    if (pts.length < 2) return;
+    var outer = SIZES.corridorW;
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = active ? 1 : 0.55;
+
+    // ambient field
+    ctx.strokeStyle = alphaColor(colour, 0.10);
+    ctx.lineWidth = outer * 2.4;
+    tracePath(pts, loop); ctx.stroke();
+
+    // rail body
+    ctx.strokeStyle = alphaColor(colour, 0.95);
+    ctx.lineWidth = outer;
+    tracePath(pts, loop); ctx.stroke();
+
+    // hollow the channel: leaves two thin rails
+    ctx.strokeStyle = 'rgba(10,14,20,0.93)';
+    ctx.lineWidth = outer - 3;
+    tracePath(pts, loop); ctx.stroke();
+
+    // faint luminous interior
+    ctx.strokeStyle = alphaColor(colour, 0.14);
+    ctx.lineWidth = outer - 3;
+    tracePath(pts, loop); ctx.stroke();
+
+    if (active) {
+      // travelling energy pulses
+      ctx.setLineDash([3, 13]);
+      ctx.lineDashOffset = -(t * 26) % 16;
+      ctx.strokeStyle = alphaColor(colour, 0.55);
+      ctx.lineWidth = 1.8;
+      tracePath(pts, loop); ctx.stroke();
+    } else {
+      // awaiting a vessel: a still, dashed survey line
+      ctx.setLineDash([6, 7]);
+      ctx.strokeStyle = alphaColor(colour, 0.5);
+      ctx.lineWidth = 1.4;
+      tracePath(pts, loop); ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function computeNubs(game) {
@@ -201,9 +315,10 @@
       var nubs = [];
       [['head', 0, 1], ['tail', cor.path.length - 1, cor.path.length - 2]].forEach(function (spec) {
         var p = cor.path[spec[1]], q = cor.path[spec[2]];
+        var stop = game.colonyById(cor.stops[spec[1]]);
         var dx = p.x - q.x, dy = p.y - q.y;
         var len = Math.sqrt(dx * dx + dy * dy) || 1;
-        var ext = SIZES.colonyR + 15;
+        var ext = (stop ? colonyRadius(stop) : SIZES.colonyR) + 13;
         nubs.push({ end: spec[0], x: p.x + dx / len * ext, y: p.y + dy / len * ext, dx: dx / len, dy: dy / len });
       });
       cor._nubs = nubs;
@@ -215,28 +330,31 @@
     game.corridors.forEach(function (cor) {
       if (drag && drag.corridor === cor) return; // preview drawn instead
       var colour = CW.CORRIDOR_COLOURS[cor.colourIdx].hex;
-      var dash = cor.ships.length ? null : [9, 7];
-      strokePath(corridorPoints(cor), cor.loop, colour, SIZES.corridorW, dash, true);
+      drawConduit(cor.path, cor.loop, colour, t, cor.ships.length > 0);
     });
-    // end nubs (grab handles)
+    // end nubs (grab handles): a dashed unfinished stub with a cap tick
     computeNubs(game);
     game.corridors.forEach(function (cor) {
       if (drag && drag.corridor === cor) return;
       var colour = CW.CORRIDOR_COLOURS[cor.colourIdx].hex;
       (cor._nubs || []).forEach(function (nub) {
         var p = cor.path[nub.end === 'head' ? 0 : cor.path.length - 1];
-        ctx.strokeStyle = colour;
-        ctx.lineWidth = SIZES.corridorW;
+        ctx.save();
+        ctx.strokeStyle = alphaColor(colour, 0.85);
+        ctx.lineWidth = 2.2;
         ctx.lineCap = 'round';
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(nub.x, nub.y);
         ctx.stroke();
-        // perpendicular cap tick
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2.6;
         ctx.beginPath();
-        ctx.moveTo(nub.x - nub.dy * 6, nub.y + nub.dx * 6);
-        ctx.lineTo(nub.x + nub.dy * 6, nub.y - nub.dx * 6);
+        ctx.moveTo(nub.x - nub.dy * 6.5, nub.y + nub.dx * 6.5);
+        ctx.lineTo(nub.x + nub.dy * 6.5, nub.y - nub.dx * 6.5);
         ctx.stroke();
+        ctx.restore();
       });
     });
     drawRelayBeacons(game, t);
@@ -261,17 +379,31 @@
         var colour = CW.CORRIDOR_COLOURS[cor.colourIdx].hex;
         ctx.save();
         ctx.translate(mx, my);
+        // stabilised clearing around the beacon
+        var cg = ctx.createRadialGradient(0, 0, 2, 0, 0, 26);
+        cg.addColorStop(0, 'rgba(10,14,20,0.55)');
+        cg.addColorStop(1, 'rgba(10,14,20,0)');
+        ctx.fillStyle = cg;
+        ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill();
+        // the relay pylon
         ctx.strokeStyle = PARCH;
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 1.9;
         ctx.beginPath();
-        ctx.moveTo(0, -8); ctx.lineTo(6, 0); ctx.lineTo(0, 8); ctx.lineTo(-6, 0);
+        ctx.moveTo(0, -9.5); ctx.lineTo(7, 0); ctx.lineTo(0, 9.5); ctx.lineTo(-7, 0);
         ctx.closePath();
         ctx.stroke();
         var blink = 0.35 + 0.65 * (Math.sin(t * 3) > 0 ? 1 : 0.15);
         ctx.fillStyle = alphaColor(colour, blink);
         ctx.beginPath();
-        ctx.arc(0, 0, 2.6, 0, Math.PI * 2);
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
         ctx.fill();
+        // radiating stabilisation ring
+        var ph = (t * 0.7) % 1;
+        ctx.strokeStyle = alphaColor(colour, (1 - ph) * 0.4);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8 + ph * 15, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.restore();
       }
     });
@@ -280,12 +412,12 @@
   function drawDragPreview(game, drag, t) {
     var colour = CW.CORRIDOR_COLOURS[drag.colourIdx].hex;
     var pts = drag.renderStops || [];
-    if (pts.length >= 2) strokePath(pts, drag.renderLoop, colour, SIZES.corridorW, null, true);
+    if (pts.length >= 2) drawConduit(pts, drag.renderLoop, colour, t, true);
     (drag.elastics || []).forEach(function (e) {
       ctx.save();
       ctx.setLineDash([8, 7]);
       ctx.strokeStyle = e.blocked ? RED : alphaColor(colour, 0.85);
-      ctx.lineWidth = SIZES.corridorW * 0.9;
+      ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(e.x0, e.y0);
@@ -296,7 +428,40 @@
   }
 
   // ------------------------------------------------------ ships
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawContainer(cx, cy, cell, crate) {
+    if (crate) {
+      ctx.fillStyle = PARCH;
+      roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
+      ctx.fill();
+      CW.drawGlyph(ctx, crate.type, cx, cy, cell * 0.40, 'solid', 'rgba(10,14,20,0.9)');
+    } else {
+      // empty bay: a visible recessed slot
+      ctx.fillStyle = 'rgba(10,14,20,0.45)';
+      roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(233,224,201,0.22)';
+      ctx.lineWidth = 0.7;
+      roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
+      ctx.stroke();
+    }
+  }
+
+  /* The company freighter, top-down: pointed bridge section, container
+     spine amidships, engine block astern with a live exhaust. Cargo is
+     carried as visible parchment containers, six to the hull and six to
+     each towed pod barge. */
   function drawShips(game, t) {
+    var cfg = CW.config;
     game.ships.forEach(function (ship) {
       var cor = ship.corridor;
       if (!cor || cor.path.length < 2) return;
@@ -316,8 +481,8 @@
         ctx.lineCap = 'round';
         for (var i = 1; i < ship.trail.length; i++) {
           var f = i / ship.trail.length;
-          ctx.strokeStyle = alphaColor(colour, 0.28 * f);
-          ctx.lineWidth = 2.4 * f;
+          ctx.strokeStyle = alphaColor(colour, 0.30 * f);
+          ctx.lineWidth = 2.8 * f;
           ctx.beginPath();
           ctx.moveTo(ship.trail[i - 1].x, ship.trail[i - 1].y);
           ctx.lineTo(ship.trail[i].x, ship.trail[i].y);
@@ -330,82 +495,207 @@
       ctx.translate(ship.x, ship.y);
       ctx.rotate(ang);
 
-      var len = 17, wid = 8;
-      // pods trail behind
-      for (var pd = 0; pd < ship.pods; pd++) {
-        var px = -len / 2 - 5 - pd * 13;
-        ctx.fillStyle = alphaColor(colour, 0.9);
-        roundRect(px - 11, -wid / 2 + 1, 11, wid - 2, 2.5);
-        ctx.fill();
+      var L = 30, Wd = 11;
+      var hullDark = mix(colour, '#0a0e14', 0.45);
+
+      // exhaust (only under way)
+      if (ship.state === 'move') {
+        var lick = 5 + 2.4 * Math.sin(t * 21 + ship.id * 3);
+        ctx.fillStyle = 'rgba(255,214,140,0.5)';
+        [[-Wd * 0.22], [Wd * 0.22]].forEach(function (off) {
+          ctx.beginPath();
+          ctx.moveTo(-L / 2 - 0.5, off[0] - 1.6);
+          ctx.lineTo(-L / 2 - lick, off[0]);
+          ctx.lineTo(-L / 2 - 0.5, off[0] + 1.6);
+          ctx.closePath();
+          ctx.fill();
+        });
       }
-      // hull: capsule with pointed bow
+
+      // hull — ink underlay then colour, with a fine parchment trim so
+      // the vessel never camouflages against its own conduit
+      function hullPath(grow) {
+        var g2 = grow || 0;
+        ctx.beginPath();
+        ctx.moveTo(L / 2 + 5 + g2, 0);                        // bow tip
+        ctx.lineTo(L / 2 - 3, -Wd * 0.34 - g2);               // bridge taper
+        ctx.lineTo(L * 0.16, -Wd * 0.5 - g2);
+        ctx.lineTo(-L / 2 + 3.5, -Wd * 0.5 - g2);             // spine
+        ctx.lineTo(-L / 2 - g2, -Wd * 0.30);                  // stern notch
+        ctx.lineTo(-L / 2 - g2, Wd * 0.30);
+        ctx.lineTo(-L / 2 + 3.5, Wd * 0.5 + g2);
+        ctx.lineTo(L * 0.16, Wd * 0.5 + g2);
+        ctx.lineTo(L / 2 - 3, Wd * 0.34 + g2);
+        ctx.closePath();
+      }
+      ctx.fillStyle = 'rgba(6,8,12,0.75)';
+      hullPath(1.6);
+      ctx.fill();
       ctx.fillStyle = colour;
+      hullPath(0);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(233,224,201,0.75)';
+      ctx.lineWidth = 0.9;
+      hullPath(0);
+      ctx.stroke();
+
+      // stern fins
+      ctx.fillStyle = hullDark;
       ctx.beginPath();
-      ctx.moveTo(len / 2 + 4, 0);
-      ctx.lineTo(len / 2 - 4, -wid / 2);
-      ctx.lineTo(-len / 2, -wid / 2);
-      ctx.lineTo(-len / 2, wid / 2);
-      ctx.lineTo(len / 2 - 4, wid / 2);
-      ctx.closePath();
+      ctx.moveTo(-L / 2 + 5, -Wd * 0.5); ctx.lineTo(-L / 2 + 1, -Wd * 0.82);
+      ctx.lineTo(-L / 2 + 1.6, -Wd * 0.45);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-L / 2 + 5, Wd * 0.5); ctx.lineTo(-L / 2 + 1, Wd * 0.82);
+      ctx.lineTo(-L / 2 + 1.6, Wd * 0.45);
+      ctx.closePath(); ctx.fill();
+
+      // engine block + bridge light
+      ctx.fillStyle = hullDark;
+      roundRect(-L / 2 - 0.5, -Wd * 0.3, 3.4, Wd * 0.6, 1);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(233,224,201,0.9)';
+      ctx.beginPath();
+      ctx.arc(L / 2 - 0.5, 0, 1.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // cargo minis (dark ink glyphs on the hull, MM-style):
-      // first six ride the hull in a 2×3 grid, six more per pod
-      var slots = Math.min(ship.cargo.length, 6 + ship.pods * 6);
-      for (var ci = 0; ci < slots; ci++) {
-        var cx, cy;
-        if (ci < 6) {
-          cx = len / 2 - 5.5 - Math.floor(ci / 2) * 6.2;
-          cy = (ci % 2 === 0) ? -2.3 : 2.3;
-        } else {
-          var pi = Math.floor((ci - 6) / 6);
-          var slot = (ci - 6) % 6;
-          cx = -len / 2 - 8 - pi * 13 - Math.floor(slot / 2) * 3.4;
-          cy = (slot % 2 === 0) ? -2 : 2;
+      // container bays: 2 × 3 on the hull spine
+      var cell = 5.6;
+      var hullSlots = Math.min(cfg.shipCapacity, 6);
+      for (var slot = 0; slot < hullSlots; slot++) {
+        var col = Math.floor(slot / 2), row = slot % 2;
+        var cx = L * 0.16 - 3.4 - col * (cell + 0.9);
+        var cy = row === 0 ? -Wd * 0.24 : Wd * 0.24;
+        drawContainer(cx, cy, cell, ship.cargo[slot]);
+      }
+
+      // towed pod barges, 6 containers each
+      for (var pd = 0; pd < ship.pods; pd++) {
+        var bx = -L / 2 - 5 - pd * 23;   // barge centre x
+        // coupling
+        ctx.strokeStyle = alphaColor(colour, 0.7);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(bx + 11, 0);
+        ctx.lineTo(bx + 14.5, 0);
+        ctx.stroke();
+        ctx.fillStyle = mix(colour, '#0a0e14', 0.25);
+        roundRect(bx - 10.5, -5.6, 21, 11.2, 2);
+        ctx.fill();
+        for (var ps = 0; ps < 6; ps++) {
+          var pcol = Math.floor(ps / 2), prow = ps % 2;
+          var pcx = bx + 6.4 - pcol * (cell + 0.8);
+          var pcy = prow === 0 ? -2.9 : 2.9;
+          drawContainer(pcx, pcy, cell - 0.4, ship.cargo[6 + pd * 6 + ps]);
         }
-        CW.drawGlyph(ctx, ship.cargo[ci].type, cx, cy, 2.6, 'solid', 'rgba(10,14,20,0.85)');
       }
       ctx.restore();
     });
   }
 
-  function roundRect(x, y, w, h, r) {
+  // ------------------------------------------------------ colonies (planets)
+  function drawPlanet(c, R, bright, t) {
+    var h = hashId(c.id);
+    var tint = PLANET_TINTS[h % PLANET_TINTS.length];
+    var special = !CW.TYPE_BY_ID[c.type].common;
+
+    // designated colonies are ringed worlds — the ring peeks out
+    // behind the disc, drawn first so the planet occludes its middle
+    if (special) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(-0.45 + (h % 5) * 0.09);
+      ctx.strokeStyle = 'rgba(233,224,201,' + (0.5 * bright).toFixed(3) + ')';
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, R * 1.7, R * 0.52, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // sphere
+    var g = ctx.createRadialGradient(c.x - R * 0.38, c.y - R * 0.42, R * 0.12, c.x, c.y, R * 1.02);
+    g.addColorStop(0, mix(tint, '#dfe8f2', 0.32));
+    g.addColorStop(0.55, tint);
+    g.addColorStop(1, mix(tint, '#05070b', 0.62));
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
+    ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // surface character, clipped to the disc
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
+    ctx.clip();
+    if (h & 1) {
+      // banded world
+      var tilt = ((h >> 3) % 7 - 3) * 0.06;
+      ctx.strokeStyle = 'rgba(8,10,16,0.16)';
+      ctx.lineWidth = R * 0.17;
+      [-0.42, 0.05, 0.5].forEach(function (yy, bi) {
+        ctx.beginPath();
+        ctx.moveTo(c.x - R, c.y + R * yy - R * tilt);
+        ctx.quadraticCurveTo(c.x, c.y + R * yy + R * 0.12 * (bi - 1), c.x + R, c.y + R * yy + R * tilt);
+        ctx.stroke();
+      });
+    } else {
+      // cratered world
+      ctx.fillStyle = 'rgba(8,10,16,0.18)';
+      for (var ci = 0; ci < 3; ci++) {
+        var ca = ((h >> (ci * 4)) % 100) / 100 * Math.PI * 2;
+        var cr = R * (0.42 + ((h >> (ci * 3)) % 40) / 100);
+        ctx.beginPath();
+        ctx.arc(c.x + Math.cos(ca) * cr, c.y + Math.sin(ca) * cr, R * (0.11 + ((h >> ci) % 3) * 0.035), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // terminator: night side to lower-right
+    var tg = ctx.createRadialGradient(c.x - R * 0.5, c.y - R * 0.5, R * 0.4, c.x - R * 0.5, c.y - R * 0.5, R * 2.1);
+    tg.addColorStop(0, 'rgba(5,7,11,0)');
+    tg.addColorStop(0.72, 'rgba(5,7,11,0)');
+    tg.addColorStop(1, 'rgba(5,7,11,0.55)');
+    ctx.fillStyle = tg;
+    ctx.fillRect(c.x - R, c.y - R, R * 2, R * 2);
+    ctx.restore();
+
+    // thin atmospheric limb on the lit side
+    ctx.strokeStyle = 'rgba(220,230,240,' + (0.22 * bright).toFixed(3) + ')';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, R - 0.6, Math.PI * 0.8, Math.PI * 1.75);
+    ctx.stroke();
+
+    // reserves failing: the world goes dark
+    if (bright < 1) {
+      ctx.fillStyle = 'rgba(5,7,11,' + ((1 - bright) * 0.6).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  // ------------------------------------------------------ colonies
   function drawColonies(game, t) {
     var cfg = CW.config;
     game.colonies.forEach(function (c) {
-      var special = !CW.TYPE_BY_ID[c.type].common;
-      var R = special ? SIZES.specialR : SIZES.colonyR;
+      var R = colonyRadius(c);
       var bright = 0.55 + 0.45 * c.reserve;
       if (c.reserve < 0.25 || c.starve !== null) bright *= flick(t, c.id);
 
       // halo glow
-      var g = ctx.createRadialGradient(c.x, c.y, R * 0.4, c.x, c.y, R * 2.4);
-      g.addColorStop(0, 'rgba(233,224,201,' + (0.13 * bright).toFixed(3) + ')');
+      var g = ctx.createRadialGradient(c.x, c.y, R * 0.4, c.x, c.y, R * 2.3);
+      g.addColorStop(0, 'rgba(233,224,201,' + (0.12 * bright).toFixed(3) + ')');
       g.addColorStop(1, 'rgba(233,224,201,0)');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(c.x, c.y, R * 2.4, 0, Math.PI * 2);
+      ctx.arc(c.x, c.y, R * 2.3, 0, Math.PI * 2);
       ctx.fill();
 
-      // dark plate behind glyph so corridors don't run through it
-      ctx.fillStyle = INK;
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, R + 3.2, 0, Math.PI * 2);
-      ctx.fill();
+      drawPlanet(c, R, bright, t);
 
-      // hub: double ring
+      // hub: an outer orbital works ring
       if (c.isHub) {
-        ctx.strokeStyle = alphaColor('#e9e0c9', 0.85 * bright);
+        ctx.strokeStyle = 'rgba(233,224,201,' + (0.85 * bright).toFixed(3) + ')';
         ctx.lineWidth = 1.6;
         ctx.beginPath();
         ctx.arc(c.x, c.y, R + SIZES.ringGap + 5.5, 0, Math.PI * 2);
@@ -415,8 +705,8 @@
       // reserve ring / distress countdown
       var ringR = R + SIZES.ringGap;
       if (c.starve === null) {
-        var col = c.reserve > 0.4 ? PARCH_DIM : (c.reserve > 0.15 ? AMBER : RED);
-        ctx.strokeStyle = c.reserve > 0.4 ? col : alphaColor(c.reserve > 0.15 ? '#dca94b' : '#d4574f', 0.9);
+        ctx.strokeStyle = c.reserve > 0.4 ? PARCH_DIM
+          : alphaColor(c.reserve > 0.15 ? '#dca94b' : '#d4574f', 0.9);
         ctx.lineWidth = 2.6;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, c.reserve));
@@ -429,8 +719,7 @@
         ctx.stroke();
       } else {
         var frac = Math.max(0, c.starve / cfg.starveCountdownSec);
-        var dcol = c.graceActive ? AMBER : RED;
-        ctx.strokeStyle = dcol;
+        ctx.strokeStyle = c.graceActive ? AMBER : RED;
         ctx.lineWidth = 3.2;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
@@ -457,11 +746,13 @@
         ctx.stroke();
       }
 
-      // the glyph itself — the colony IS its unmet need
-      var glyphCol = alphaColor('#e9e0c9', Math.min(1, bright));
+      // the glyph — the world IS its unmet need. Drop shadow first so
+      // it stays legible over any planet tint.
+      var gr = R * 0.56;
       ctx.lineWidth = SIZES.glyphLine;
-      CW.drawGlyph(ctx, c.type, c.x, c.y, R * 0.78, 'outline', glyphCol);
-      CW.drawGlyphDetail(ctx, c.type, c.x, c.y, R * 0.78, alphaColor('#e9e0c9', bright * 0.5));
+      CW.drawGlyph(ctx, c.type, c.x + 0.9, c.y + 1.2, gr, 'outline', 'rgba(4,6,10,0.55)');
+      CW.drawGlyph(ctx, c.type, c.x, c.y, gr, 'outline', alphaColor('#e9e0c9', Math.min(1, bright)));
+      CW.drawGlyphDetail(ctx, c.type, c.x, c.y, gr, alphaColor('#e9e0c9', bright * 0.5));
 
       // waiting crates, queued beside the colony
       drawQueue(game, c, R);
@@ -481,7 +772,7 @@
   }
 
   function drawQueue(game, c, R) {
-    var qx = c.x + R + 11, qy = c.y - 9;
+    var qx = c.x + R + 12, qy = c.y - 9;
     var maxDraw = 14;
     for (var i = 0; i < Math.min(c.queue.length, maxDraw); i++) {
       var col = i % 5, row = Math.floor(i / 5);
@@ -518,9 +809,9 @@
   // ------------------------------------------------------ assign-mode corridor pulse
   function drawAssignHighlights(game, t) {
     if (CW.assignMode !== 'ship' && CW.assignMode !== 'pod') return;
-    var pa = 0.18 + 0.14 * Math.sin(t * 5);
+    var pa = 0.14 + 0.10 * Math.sin(t * 5);
     game.corridors.forEach(function (cor) {
-      strokePath(corridorPoints(cor), cor.loop, alphaColor('#ffffff', pa), SIZES.corridorW * 3, null, false);
+      strokePath(cor.path, cor.loop, 'rgba(255,255,255,' + pa.toFixed(3) + ')', SIZES.corridorW * 3, null);
     });
   }
 
@@ -532,7 +823,7 @@
     var t = wallT;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawBackground(game, t);
+    drawBackground();
     drawStars(t);
 
     ctx.save();

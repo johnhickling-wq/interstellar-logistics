@@ -153,23 +153,34 @@
     game.stopsCost = stopsCost;
 
     function makeNebulae() {
-      // One meandering band, kept clear of the starting cluster,
-      // plus one round patch further out.
-      var side = rng() < 0.5 ? -1 : 1;
-      var dy = side * (215 + rng() * 70);
-      var tilt = (rng() - 0.5) * 0.35;
+      // The band: a meandering ionised ribbon crossing the entire
+      // chart, passing 115–180 units from the origin — close enough
+      // that the growing network meets it early, exactly as rivers
+      // work in the reference design. Random orientation per game.
+      var theta = rng() * Math.PI * 2;         // direction of closest approach
+      var nx = Math.cos(theta), ny = Math.sin(theta);
+      var ux = -ny, uy = nx;                    // along-band direction
+      var d0 = 115 + rng() * 65;
+      var ph = rng() * 10;
       var blobs = [];
-      for (var x = -950; x <= 950; x += 85) {
-        var y = dy + x * tilt + Math.sin(x * 0.004 + seed) * 70 + (rng() - 0.5) * 30;
-        blobs.push({ x: x, y: y, r: 55 + rng() * 40 });
+      for (var s = -1050; s <= 1050; s += 78) {
+        var d = d0 + Math.sin(s * 0.0035 + ph) * 80 + (rng() - 0.5) * 24;
+        d = Math.max(d, 98);                    // never swallow the origin cluster
+        blobs.push({
+          x: nx * d + ux * s,
+          y: ny * d + uy * s,
+          r: 56 + rng() * 38,
+        });
       }
-      game.nebulae.push({ id: uid(), blobs: blobs, hue: 262 });
+      game.nebulae.push({ id: uid(), blobs: blobs, hue: 268 });
 
-      var a = rng() * Math.PI * 2;
-      var cx = Math.cos(a) * 430, cy = -side * (170 + rng() * 120);
+      // A rose-tinted patch on the far side, for later expansion pain.
+      var pa = theta + Math.PI * (0.7 + rng() * 0.6);
+      var pd = 380 + rng() * 170;
+      var cx = Math.cos(pa) * pd, cy = Math.sin(pa) * pd * 0.7;
       var patch = [];
       for (var i = 0; i < 4; i++) {
-        patch.push({ x: cx + (rng() - 0.5) * 130, y: cy + (rng() - 0.5) * 80, r: 60 + rng() * 45 });
+        patch.push({ x: cx + (rng() - 0.5) * 150, y: cy + (rng() - 0.5) * 95, r: 62 + rng() * 42 });
       }
       game.nebulae.push({ id: uid(), blobs: patch, hue: 322 });
     }
@@ -347,7 +358,7 @@
           (shared[k] = shared[k] || []).push(cor.id);
         }
       });
-      var OFF = 6.5; // world units between parallel corridors
+      var OFF = 9.5; // world units between parallel corridors
       game.corridors.forEach(function (cor) {
         var n = cor.stops.length, count = cor.loop ? n : n - 1;
         var segOffsets = [];
@@ -845,14 +856,27 @@
     (function initialColonies() {
       var base = rng() * Math.PI * 2;
       var types = ['water', 'food', 'energy'];
+      var placed = [];
       for (var i = 0; i < 3; i++) {
-        var a = base + i * (Math.PI * 2 / 3) + (rng() - 0.5) * 0.5;
-        var r = 115 + rng() * 55;
-        var x = Math.cos(a) * r, y = Math.sin(a) * r * 0.62;
-        // nudge out of nebulae if unlucky
-        var guard = 0;
-        while (pointInNebula(x, y, 34) && guard++ < 20) { x *= 0.92; y *= 0.92; }
-        addColony(types[i], x, y, 1);
+        var best = null;
+        for (var att = 0; att < 50 && !best; att++) {
+          // first tries stay near the intended even spacing, later
+          // tries roam anywhere in the starting region
+          var a = att < 12
+            ? base + i * (Math.PI * 2 / 3) + (rng() - 0.5) * 0.7
+            : rng() * Math.PI * 2;
+          var r = 112 + rng() * 62;
+          var x = Math.cos(a) * r, y = Math.sin(a) * r * 0.62;
+          if (pointInNebula(x, y, 36)) continue;
+          var clear = true;
+          for (var j = 0; j < placed.length; j++) {
+            if (dist2(x, y, placed[j].x, placed[j].y) < 80 * 80) { clear = false; break; }
+          }
+          if (clear) best = { x: x, y: y };
+        }
+        if (!best) best = { x: Math.cos(base + i * 2.1) * 150, y: Math.sin(base + i * 2.1) * 95 };
+        placed.push(best);
+        addColony(types[i], best.x, best.y, 1);
       }
     })();
 

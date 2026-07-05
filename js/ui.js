@@ -29,13 +29,18 @@
     ship: function (g, s) {
       g.fillStyle = '#e9e0c9';
       g.beginPath();
-      g.moveTo(s * 0.9, s * 0.5);
-      g.lineTo(s * 0.68, s * 0.28);
-      g.lineTo(s * 0.12, s * 0.28);
-      g.lineTo(s * 0.12, s * 0.72);
-      g.lineTo(s * 0.68, s * 0.72);
+      g.moveTo(s * 0.95, s * 0.5);          // bow
+      g.lineTo(s * 0.68, s * 0.32);
+      g.lineTo(s * 0.22, s * 0.32);
+      g.lineTo(s * 0.14, s * 0.42);
+      g.lineTo(s * 0.14, s * 0.58);
+      g.lineTo(s * 0.22, s * 0.68);
+      g.lineTo(s * 0.68, s * 0.68);
       g.closePath();
       g.fill();
+      // exhaust ticks
+      g.fillRect(s * 0.02, s * 0.40, s * 0.08, s * 0.06);
+      g.fillRect(s * 0.02, s * 0.54, s * 0.08, s * 0.06);
     },
     pod: function (g, s) {
       g.strokeStyle = '#e9e0c9'; g.lineWidth = 2;

@@ -92,7 +92,7 @@ slider ranges (`CW.TUNING_SCHEMA`).
 | `js/copy.js`   | the company voice: names, memos, manifest quips |
 | `js/glyphs.js` | the ten cargo glyphs as canvas vector paths |
 | `js/sim.js`    | the entire simulation — colonies, crates, corridors, ships, routing (multi-source BFS per cargo type), starvation, spawning, weekly reviews |
-| `js/render.js` | canvas renderer: survey grid, nebulae, corridors, vessels, reserve rings, distress telegraphing |
+| `js/render.js` | canvas renderer: survey grid, hatched nebula hazards, stylised planets, twin-rail conduits, container freighters, reserve rings, distress telegraphing |
 | `js/input.js`  | pointer gestures for corridor editing (mouse + touch) |
 | `js/ui.js`     | HUD, memoranda, Ship's Manifest, toasts, tooltip |
 | `js/devpanel.js` | the Tuning Office |
