@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1017">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Crump &amp; Wainwright — Interstellar Freight Services</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="%230b1017" stroke="%23c9a227" stroke-width="3"/><text x="32" y="41" font-family="Georgia,serif" font-size="24" fill="%23e9e0c9" text-anchor="middle">C%26W</text></svg>'>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<!-- ————— HUD ————— -->
+<div id="hud-top" class="hud">
+  <button id="brand-mark" title="Crump &amp; Wainwright" aria-label="Crump and Wainwright">
+    <svg viewBox="0 0 64 64" width="30" height="30">
+      <circle cx="32" cy="32" r="29" fill="none" stroke="#c9a227" stroke-width="2.5"/>
+      <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(233,224,201,0.35)" stroke-width="1"/>
+      <text x="32" y="40" font-family="Georgia,serif" font-size="19" fill="#e9e0c9" text-anchor="middle">C&amp;W</text>
+    </svg>
+  </button>
+  <div id="brand-word">CRUMP &amp; WAINWRIGHT<span>INTERSTELLAR FREIGHT SERVICES</span></div>
+  <div id="hud-clock">
+    <div id="clock-ring"></div>
+    <div id="clock-day">WK 1 · MON</div>
+  </div>
+  <div class="hud-spacer"></div>
+  <div id="hud-score" title="Consignments delivered"><span id="hud-score-n">0</span></div>
+  <button id="btn-sound" class="hud-btn" title="Sound">
+    <svg viewBox="0 0 24 24" width="18" height="18"><path class="spk" d="M4 9v6h4l5 4V5L8 9H4z" fill="#e9e0c9"/><path class="wave" d="M16 9c1.5 1.5 1.5 4.5 0 6" stroke="#e9e0c9" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+  </button>
+  <button id="btn-speed" class="hud-btn" title="Fast forward">
+    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 6v12l7-6-7-6zm9 0v12l7-6-7-6z" fill="#e9e0c9"/></svg>
+  </button>
+  <button id="btn-pause" class="hud-btn" title="Pause">
+    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z" fill="#e9e0c9"/></svg>
+  </button>
+</div>
+
+<div id="hud-bottom" class="hud">
+  <div id="corridor-chips"></div>
+  <div id="hud-divider"></div>
+  <div id="inventory-chips"></div>
+</div>
+
+<div id="toasts"></div>
+<div id="tooltip"></div>
+
+<!-- engineering drawing title block -->
+<div id="titleblock">
+  <div class="tb-row tb-name">CRUMP &amp; WAINWRIGHT</div>
+  <div class="tb-row" id="tb-sector">ROUTE CHART · SECTOR —</div>
+  <div class="tb-row">SCALE: INDETERMINATE · SHEET 1 OF 1</div>
+  <div class="tb-row">APPROVED: W.C. · EST. 1896</div>
+</div>
+
+<!-- ————— Start screen ————— -->
+<div id="start-screen" class="screen visible">
+  <div class="panel start-panel">
+    <svg viewBox="0 0 64 64" width="72" height="72" class="crest">
+      <circle cx="32" cy="32" r="29" fill="none" stroke="#c9a227" stroke-width="2"/>
+      <circle cx="32" cy="32" r="24.5" fill="none" stroke="rgba(233,224,201,0.4)" stroke-width="0.8"/>
+      <text x="32" y="40" font-family="Georgia,serif" font-size="19" fill="#e9e0c9" text-anchor="middle">C&amp;W</text>
+    </svg>
+    <h1>CRUMP &amp; WAINWRIGHT</h1>
+    <div class="subtitle">INTERSTELLAR FREIGHT SERVICES · EST. 1896</div>
+    <div id="start-tagline">Connecting frontier worlds since 1896.</div>
+    <div class="start-buttons">
+      <button id="btn-play" class="btn-primary">ASSUME DUTY</button>
+      <button id="btn-manifest" class="btn-secondary">SHIP’S MANIFEST</button>
+    </div>
+    <div class="howto">
+      Draw hyperspace corridors between colonies. Vessels do the rest.<br>
+      Every colony lives on the one thing it cannot produce.<br>
+      Keep it supplied, or file form L‑1.
+    </div>
+    <div class="smallprint">Crump &amp; Wainwright accepts no liability for cargo lost to ionised nebulae, temporal anomalies, or enthusiasm.</div>
+  </div>
+</div>
+
+<!-- ————— Ship's Manifest ————— -->
+<div id="manifest-screen" class="screen">
+  <div class="panel manifest-panel">
+    <h2>SHIP’S MANIFEST</h2>
+    <div class="manifest-note">A colony displays the glyph of the one cargo it cannot produce.
+      Crates carry the glyph of the colony type they are bound for. Deliver accordingly.</div>
+    <div id="manifest-grid"></div>
+    <div class="manifest-note dim">* Designated colonies. One per sector, and the sector is rather attached to them.</div>
+    <div class="manifest-note dim">Operations: drag between colonies to open a corridor · drag a loose end to extend it
+      · drag mid-route onto a colony to call there · long-press a stop to reroute or withdraw service.</div>
+    <button id="btn-manifest-close" class="btn-primary">VERY GOOD</button>
+  </div>
+</div>
+
+<!-- ————— Pause ————— -->
+<div id="pause-screen" class="screen">
+  <div class="panel">
+    <h2>SERVICE HELD</h2>
+    <div class="pause-note">The network waits. The paperwork does not.</div>
+    <div class="stack">
+      <button id="btn-resume" class="btn-primary">RESUME SERVICE</button>
+      <button id="btn-pause-manifest" class="btn-secondary">SHIP’S MANIFEST</button>
+      <button id="btn-restart" class="btn-secondary">NEW CONTRACT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ————— Weekly review ————— -->
+<div id="review-dialog" class="screen">
+  <div class="panel memo-panel">
+    <div class="memo-head">INTERNAL MEMORANDUM</div>
+    <h2 id="review-week">Week 1 concluded</h2>
+    <div class="memo-line">The Board has approved: one (1) additional freight vessel.<br>
+      Further, kindly select <b>one</b> of the following requisitions:</div>
+    <div id="review-options"></div>
+  </div>
+</div>
+
+<!-- ————— Game over ————— -->
+<div id="gameover-screen" class="screen">
+  <div class="panel memo-panel">
+    <div class="memo-head">NOTICE OF SERVICE REVIEW</div>
+    <div id="go-memo" class="memo-line"></div>
+    <div id="go-stats">
+      <div><span id="go-days">0</span><label>days in service</label></div>
+      <div><span id="go-delivered">0</span><label>consignments</label></div>
+      <div><span id="go-best">0</span><label>company record</label></div>
+    </div>
+    <div id="go-signoff" class="memo-signoff">The kettle remains on.</div>
+    <div class="memo-from">— Head Office</div>
+    <button id="btn-again" class="btn-primary">RESUME TRADING</button>
+  </div>
+</div>
+
+<!-- ————— Portrait guard ————— -->
+<div id="rotate-overlay">
+  <div>
+    <svg viewBox="0 0 24 24" width="42" height="42"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="#e9e0c9" stroke-width="1.5" transform="rotate(90 12 12)"/></svg>
+    <p>Kindly rotate your device.<br><span>Company services operate in landscape.</span></p>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/copy.js"></script>
+<script src="js/glyphs.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/render.js"></script>
+<script src="js/input.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/devpanel.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
