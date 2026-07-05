@@ -41,12 +41,12 @@
   CW.DEFAULTS = {
     // Time & pace
     dayLengthSec: 20,          // real seconds per in-game day
-    fastSpeed: 2.5,            // fast-forward multiplier
+    fastSpeed: 3,              // fast-forward multiplier
 
     // Colony spawning
-    colonySpawnInterval: 22,   // seconds between new colonies (start)
-    colonySpawnIntervalGrowth: 0.8, // seconds added per spawn
-    colonySpawnIntervalMax: 42,
+    colonySpawnInterval: 30,   // seconds between new colonies (start)
+    colonySpawnIntervalGrowth: 1.0, // seconds added per spawn
+    colonySpawnIntervalMax: 52,
     colonyMinDist: 92,         // world units between colonies
     spawnRadiusStart: 250,
     spawnRadiusGrowth: 14,     // radius added per spawn
@@ -54,39 +54,39 @@
     weightWater: 4,
     weightFood: 2,
     weightEnergy: 1,
-    specialStartDay: 4,        // first day a special colony may appear
+    specialStartDay: 5,        // first day a special colony may appear
     specialChance: 0.22,       // chance a given spawn is special
     specialReplaceChance: 0.5, // chance a special TRANSFORMS an existing common colony
 
     // Cargo production
-    crateCheckInterval: 2.5,   // seconds between production checks
-    crateBaseRate: 0.07,       // probability per colony per check (day 1)
-    crateRateGrowthPerDay: 0.007,
-    crateRateMax: 0.26,
+    crateCheckInterval: 3.0,   // seconds between production checks
+    crateBaseRate: 0.035,      // probability per colony per check (day 1)
+    crateRateGrowthPerDay: 0.003,
+    crateRateMax: 0.16,
     specialDemandWeight: 1.0,  // destination weighting for special types
     queueSoftCap: 8,           // produced crates beyond this are ignored
     hubQueueCap: 16,
 
     // Reserves & failure
-    reserveDurationSec: 115,   // full reserve -> empty, undelivered
-    deliveryRefill: 0.3,       // reserve fraction restored per delivery
-    newColonyReserve: 0.85,
-    starveCountdownSec: 45,    // distress countdown once reserve is empty
+    reserveDurationSec: 220,   // full reserve -> empty, undelivered
+    deliveryRefill: 0.45,      // reserve fraction restored per delivery
+    newColonyReserve: 1.0,
+    starveCountdownSec: 55,    // distress countdown once reserve is empty
     graceHold: 1,              // 1 = countdown holds while relief ship is due next stop
 
     // Fleet
-    shipSpeed: 72,             // world units / second
+    shipSpeed: 92,             // world units / second
     shipCapacity: 6,
     podCapacity: 6,
     maxPodsPerShip: 3,
-    dwellBase: 0.5,            // docking time, seconds
-    dwellPerCrate: 0.1,        // extra per crate moved
-    hubDwellMult: 0.6,
+    dwellBase: 0.25,           // docking time, seconds
+    dwellPerCrate: 0.05,       // extra per crate moved
+    hubDwellMult: 0.45,
 
     // Starting inventory & upgrades
     startShips: 3,
     startCorridors: 3,
-    startRelays: 2,
+    startRelays: 3,
     maxCorridors: 7,
     upgradePeriodDays: 7,      // weekly review
     maxHubs: 5,
@@ -99,9 +99,9 @@
       ['fastSpeed', 'Fast-forward ×', 1.5, 5, 0.5],
     ]},
     { group: 'Colony Spawning', items: [
-      ['colonySpawnInterval', 'Spawn interval (s)', 8, 60, 1],
+      ['colonySpawnInterval', 'Spawn interval (s)', 12, 60, 1],
       ['colonySpawnIntervalGrowth', 'Interval growth /spawn', 0, 3, 0.1],
-      ['colonySpawnIntervalMax', 'Interval max (s)', 20, 90, 1],
+      ['colonySpawnIntervalMax', 'Interval max (s)', 25, 90, 1],
       ['colonyMinDist', 'Min colony spacing', 50, 160, 2],
       ['spawnRadiusStart', 'Frontier radius (start)', 150, 500, 10],
       ['spawnRadiusGrowth', 'Frontier growth /spawn', 0, 40, 1],
@@ -113,17 +113,17 @@
       ['specialReplaceChance', 'Industrialise chance', 0, 1, 0.05],
     ]},
     { group: 'Cargo Production', items: [
-      ['crateCheckInterval', 'Production tick (s)', 0.5, 6, 0.25],
-      ['crateBaseRate', 'Base rate (day 1)', 0, 0.3, 0.005],
-      ['crateRateGrowthPerDay', 'Rate growth /day', 0, 0.03, 0.001],
-      ['crateRateMax', 'Rate ceiling', 0.05, 0.5, 0.01],
+      ['crateCheckInterval', 'Production tick (s)', 1.0, 6, 0.25],
+      ['crateBaseRate', 'Base rate (day 1)', 0, 0.2, 0.005],
+      ['crateRateGrowthPerDay', 'Rate growth /day', 0, 0.02, 0.001],
+      ['crateRateMax', 'Rate ceiling', 0.05, 0.35, 0.01],
       ['specialDemandWeight', 'Special demand ×', 0, 3, 0.1],
       ['queueSoftCap', 'Colony yard cap', 4, 20, 1],
       ['hubQueueCap', 'Hub yard cap', 8, 30, 1],
     ]},
     { group: 'Reserves & Failure', items: [
-      ['reserveDurationSec', 'Reserve duration (s)', 40, 300, 5],
-      ['deliveryRefill', 'Refill per delivery', 0.05, 1, 0.05],
+      ['reserveDurationSec', 'Reserve duration (s)', 60, 400, 5],
+      ['deliveryRefill', 'Refill per delivery', 0.1, 1, 0.05],
       ['newColonyReserve', 'New colony reserve', 0.3, 1, 0.05],
       ['starveCountdownSec', 'Distress countdown (s)', 10, 90, 1],
       ['graceHold', 'Hold timer if relief due (0/1)', 0, 1, 1],

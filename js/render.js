@@ -76,7 +76,7 @@
     var bw = Math.max(maxX - minX, 260), bh = Math.max(maxY - minY, 200);
     var padX = 40, padTop = 58, padBot = 74;
     var ts = Math.min((W - padX * 2) / bw, (H - padTop - padBot) / bh);
-    ts = Math.max(0.4, Math.min(1.9, ts));
+    ts = Math.max(0.52, Math.min(1.9, ts));
     var tx = (minX + maxX) / 2, ty = (minY + maxY) / 2 + (padBot - padTop) / 2 / ts;
     if (!cam.init) { cam.x = tx; cam.y = ty; cam.scale = ts; cam.init = true; return; }
     if (CW.inputActive) return; // hold steady under the player's finger
@@ -705,9 +705,10 @@
       // reserve ring / distress countdown
       var ringR = R + SIZES.ringGap;
       if (c.starve === null) {
-        ctx.strokeStyle = c.reserve > 0.4 ? PARCH_DIM
+        var warn = c.reserve <= 0.4;
+        ctx.strokeStyle = !warn ? PARCH_DIM
           : alphaColor(c.reserve > 0.15 ? '#dca94b' : '#d4574f', 0.9);
-        ctx.lineWidth = 2.6;
+        ctx.lineWidth = warn ? 3.2 : 2.6;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, c.reserve));
         ctx.stroke();
