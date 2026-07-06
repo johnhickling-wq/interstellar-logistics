@@ -118,6 +118,37 @@ The theme system lives in `js/theme.js` (`CW.THEME_DEFAULTS`,
 `CW.THEME_SCHEMA`, `CW.THEME_PRESETS`); the renderer re-reads the theme
 every frame, so changes land instantly.
 
+## The Planetary Works (procedural planet generator)
+
+Open **`planets.html`** — a standalone companion app that casts batches
+of procedural worlds: nine archetypes (verdant, pelagic, dust, glacial,
+foundry, gas colossus, barren, miasmic, anomalous), sizes varying ±50%,
+distinct palettes, rings, up to four orbiting moons, drifting cloud
+layers, polar caps, great storms, craters, glowing lava veins and
+night-side city lights. Every world is pure data from a seed — the same
+seed always casts the same worlds.
+
+Five **house finishes** can be applied, or *merged by weight* like
+paint: **Realistic**, **Cartoon**, **Magical**, **Survey Ink** (the
+game's own engraved-chart idiom) and **Pixel Age**. Styles are
+parameter sets, not code paths — outline, posterisation, cel shading,
+saturation, hatching, iridescence, sparkle, glow and pixelation all
+blend linearly, so "two ladles of Cartoon to one of Magical" is a
+perfectly respectable order. The pattern book ships pure finishes plus
+a few named blends.
+
+- **Gallery** — a batch of worlds side by side; click one for the
+  inspection bench (spinning close-up, survey card, witty field notes).
+- **Forge** — batch size, seed casting, per-world re-forging;
+  **COPY SPEC** exports a world + style mix as JSON.
+- Shareable/testable via query string:
+  `planets.html?seed=frome&count=12&mix=cartoon:60,magical:40&still=1`.
+
+The engine lives in `js/planetgen.js` (`CW.PlanetGen`): `generate(seed)`
+returns a serialisable spec; `render(ctx, spec, x, y, r, styleMix, t)`
+paints it anywhere. It touches no DOM and no game state, so it can be
+lifted into the game renderer whole when the time comes.
+
 ## Architecture
 
 | File | Responsibility |
@@ -133,6 +164,8 @@ every frame, so changes land instantly.
 | `js/devpanel.js` | the Tuning Office |
 | `js/main.js`   | assembly and the main loop |
 | `design.html` + `js/design.js` | the Drawing Office appearance studio |
+| `js/planetgen.js` | procedural planet engine: seeded specs, style mixing, painter |
+| `planets.html` + `js/planetworks.js` | the Planetary Works generator app |
 
 Design rules honoured throughout, per the concept documents: a colony never
 produces the cargo type it consumes; crates match colony *types*, never
