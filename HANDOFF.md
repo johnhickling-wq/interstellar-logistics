@@ -4,7 +4,7 @@ Session-to-session state note. Refresh at the end of each working
 session; delete sections that stop being true. Permanent facts belong in
 CLAUDE.md, not here.
 
-## Where we are (2026-07-07)
+## Where we are (2026-07-07, session 2 wrap-up)
 
 The game is feature-complete and deployed via Netlify (static, no build):
 
@@ -22,7 +22,7 @@ The game is feature-complete and deployed via Netlify (static, no build):
   Themes file to localStorage and restyle the game on next load. Three
   house styles ship: Blueprint, Gaslight, Signal Room.
 
-## Key decisions this session
+## Key decisions (carried forward)
 
 - All visual constants moved out of render.js into `CW.theme`
   (js/theme.js); renderer re-reads the theme every frame. Never
@@ -34,18 +34,30 @@ The game is feature-complete and deployed via Netlify (static, no build):
 - The Drawing Office uses the real sim + renderer on a scripted showcase
   scene rather than mock objects, so previews can never drift from the
   actual game.
+- Project continuity system established: CLAUDE.md (permanent facts, read
+  automatically) + HANDOFF.md (session state) + commit-per-milestone +
+  `main` as the production branch.
+
+## Infra state
+
+- `main` exists on GitHub as the production branch, created from this
+  session's final commit. GitHub default branch and Netlify production
+  branch were being switched to `main` at end of session (owner action,
+  in the GitHub + Netlify web UIs). If a new session sees the default
+  branch is still a `claude/*` branch, the switch may not have completed
+  — confirm with the owner.
+- Day-to-day work happens on the session's `claude/*` branch; merge into
+  `main` only when the owner asks to publish. Merging `main` triggers the
+  Netlify redeploy.
 
 ## Known loose ends / natural next steps
 
-- The owner is play-testing on real devices; expect a tuning pass on
-  `CW.config` (Tuning Office → Copy JSON → bake into config.js DEFAULTS)
-  and a finish designed in the Drawing Office (Carbon Copy → bake into
-  theme.js THEME_DEFAULTS) once settled.
-- Branch shape: `main` is the stable production branch, created
-  2026-07-07 from this session's final state. The owner is flipping two
-  one-time settings: GitHub default branch → `main` (so new sessions
-  branch from current code) and Netlify production branch → `main` (so
-  deploys track it). Until both are flipped, treat `main` as the source
-  of truth anyway.
+- Real-device play-testing is the main open thread. Expect a tuning pass
+  on `CW.config` (Tuning Office → Copy JSON → bake into config.js
+  DEFAULTS) and/or a finish designed in the Drawing Office (Carbon Copy →
+  bake into theme.js THEME_DEFAULTS) once the owner settles on values.
+  Re-verify balance with the Playwright bot after any config change.
 - Nice-to-haves discussed but not built: `_redirects` entry for a clean
-  `/design` URL.
+  `/design` URL (instead of `/design.html`).
+- No PR has been opened; work has gone straight to branches. Owner has
+  not requested PRs.
