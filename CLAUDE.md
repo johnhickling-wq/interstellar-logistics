@@ -107,3 +107,7 @@ make sure the showcase scene exhibits it.
   the current state, in-flight decisions and next steps. At the end of a
   session (when asked to wrap up), refresh HANDOFF.md, move any newly
   permanent facts into this file, and commit both.
+- `main` is the production branch: Netlify deploys it and new sessions
+  branch from it. Do day-to-day work on the session's designated
+  `claude/*` branch; merge into `main` and push only when the owner
+  asks to publish.

@@ -41,10 +41,11 @@ The game is feature-complete and deployed via Netlify (static, no build):
   `CW.config` (Tuning Office → Copy JSON → bake into config.js DEFAULTS)
   and a finish designed in the Drawing Office (Carbon Copy → bake into
   theme.js THEME_DEFAULTS) once settled.
-- Deployment/branch shape: Netlify currently deploys the repo's default
-  branch, which is this session's working branch. Future sessions work
-  on their own `claude/*` branches — their work will NOT appear on
-  Netlify until merged into the branch Netlify tracks. Consider creating
-  a stable `main` as the production branch.
+- Branch shape: `main` is the stable production branch, created
+  2026-07-07 from this session's final state. The owner is flipping two
+  one-time settings: GitHub default branch → `main` (so new sessions
+  branch from current code) and Netlify production branch → `main` (so
+  deploys track it). Until both are flipped, treat `main` as the source
+  of truth anyway.
 - Nice-to-haves discussed but not built: `_redirects` entry for a clean
   `/design` URL.
