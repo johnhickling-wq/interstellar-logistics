@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1017">
+<title>The Pattern Book — Crump &amp; Wainwright</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" fill="%230b1017" stroke="%23c9a227" stroke-width="3"/><path d="M16 20h32M16 32h32M16 44h20" stroke="%23e9e0c9" stroke-width="4"/></svg>'>
+<style>
+:root {
+  --ink: #0b1017;
+  --ink-raise: #121926;
+  --parch: #e9e0c9;
+  --parch-dim: rgba(233, 224, 201, 0.55);
+  --parch-faint: rgba(233, 224, 201, 0.22);
+  --brass: #c9a227;
+  --red: #d4574f;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { background: var(--ink); }
+body {
+  background: var(--ink);
+  color: var(--parch);
+  font-family: var(--sans);
+  padding-bottom: 90px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ————— header ————— */
+#pb-head {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 12px 20px;
+  background: rgba(11, 16, 23, 0.92);
+  border-bottom: 1px solid var(--parch-faint);
+  backdrop-filter: blur(6px);
+}
+#pb-title b { font-family: var(--serif); font-size: 17px; letter-spacing: 0.22em; display: block; }
+#pb-title span { font-size: 8.5px; letter-spacing: 0.3em; color: var(--parch-dim); }
+#pb-head .spacer { flex: 1; }
+.pb-btn {
+  font-family: var(--sans); font-size: 10px; letter-spacing: 0.14em;
+  color: var(--parch); background: none; text-decoration: none;
+  border: 1px solid var(--parch-faint); padding: 7px 13px; cursor: pointer;
+}
+.pb-btn:hover { border-color: var(--parch-dim); }
+.pb-btn.primary { border-color: var(--brass); color: var(--brass); }
+
+#pb-intro {
+  max-width: 860px; margin: 26px auto 4px; padding: 0 20px;
+  font-size: 12.5px; line-height: 1.75; color: var(--parch-dim);
+}
+#pb-intro b { color: var(--parch); font-weight: 500; }
+
+/* ————— plates ————— */
+.plate { max-width: 1280px; margin: 40px auto 0; padding: 0 20px; }
+.plate-head { border-bottom: 1px solid var(--parch-faint); padding-bottom: 10px; margin-bottom: 14px; }
+.plate-head h2 { font-family: var(--serif); font-weight: 500; font-size: 16px; letter-spacing: 0.2em; }
+.plate-head p { font-size: 11px; color: var(--parch-dim); margin-top: 5px; line-height: 1.6; max-width: 760px; }
+
+.plate-controls {
+  display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: center;
+  background: var(--ink-raise); border: 1px solid var(--parch-faint);
+  padding: 10px 14px; margin-bottom: 16px;
+}
+.pc-row { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.06em; color: var(--parch-dim); }
+.pc-row input[type=range] { width: 110px; accent-color: var(--brass); }
+.pc-row .pc-val { color: var(--parch); min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+.swatches { display: flex; align-items: center; gap: 6px; }
+.swatch {
+  width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(0,0,0,0.5); outline: 1px solid transparent; outline-offset: 2px;
+}
+.swatch.vary {
+  background: conic-gradient(#c9a227,#3fa88e,#c25450,#6f9bd8,#a273b8,#cf7b3e,#8fae5c,#d8d2e0,#c9a227);
+}
+.swatch.on { outline-color: var(--parch); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.grid.narrow { grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); }
+
+.card {
+  background: var(--ink-raise); border: 1px solid var(--parch-faint);
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--parch-dim); }
+.card.selected { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
+.card canvas { display: block; width: 100%; height: auto; }
+.card .cap {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 7px 10px; border-top: 1px solid var(--parch-faint);
+}
+.card .cap .no { font-family: var(--serif); font-size: 11px; color: var(--brass); white-space: nowrap; }
+.card .cap .nm { font-size: 10.5px; letter-spacing: 0.08em; color: var(--parch); }
+.card .cap .sub { font-size: 9px; color: var(--parch-dim); margin-left: auto; text-align: right; }
+.card .stamp {
+  position: absolute; top: 8px; right: -26px; transform: rotate(35deg);
+  background: var(--brass); color: var(--ink);
+  font-size: 8.5px; letter-spacing: 0.22em; font-weight: 600;
+  padding: 2px 30px; display: none; pointer-events: none;
+}
+.card.selected .stamp { display: block; }
+
+/* type specimens */
+.typecard { padding: 14px 16px 10px; min-height: 168px; }
+.typecard .tc-word { letter-spacing: var(--pb-track, 0.18em); font-size: 19px; line-height: 1.2; }
+.typecard .tc-sub { letter-spacing: 0.28em; font-size: 8px; color: var(--parch-dim); margin: 3px 0 10px; white-space: nowrap; overflow: hidden; }
+.typecard .tc-memo { font-size: 9px; letter-spacing: 0.24em; color: var(--brass); margin-bottom: 4px; }
+.typecard .tc-body { font-size: var(--pb-body, 12px); line-height: 1.55; color: var(--parch); opacity: 0.9; }
+.typecard .tc-hud { margin-top: 10px; font-size: 10px; letter-spacing: 0.12em; color: var(--parch-dim); }
+.typecard .tc-hud b { color: var(--parch); font-weight: 500; }
+.typecard .tc-avail { position: absolute; top: 8px; left: 10px; font-size: 8px; letter-spacing: 0.1em; color: var(--red); opacity: 0.85; }
+
+/* ————— footer requisition bar ————— */
+#pb-foot {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 10px 20px;
+  background: rgba(11, 16, 23, 0.94);
+  border-top: 1px solid var(--parch-faint);
+  backdrop-filter: blur(6px);
+  font-size: 10px; letter-spacing: 0.08em;
+}
+#pb-foot .pick { color: var(--parch-dim); }
+#pb-foot .pick b { color: var(--parch); font-weight: 500; }
+#pb-foot .pick b.none { color: var(--parch-faint); font-style: italic; }
+#pb-toast {
+  position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%);
+  background: var(--ink-raise); border: 1px solid var(--brass); color: var(--parch);
+  font-size: 11px; letter-spacing: 0.08em; padding: 8px 16px;
+  opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 40;
+}
+#pb-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header id="pb-head">
+  <div id="pb-title">
+    <b>THE PATTERN BOOK</b>
+    <span>CRUMP &amp; WAINWRIGHT · DEPT. OF APPEARANCES · SPECIMENS FOR THE BOARD</span>
+  </div>
+  <div class="spacer"></div>
+  <button id="pb-copy" class="pb-btn primary">COPY REQUISITION</button>
+  <button id="pb-clear" class="pb-btn">CLEAR MARKS</button>
+  <a class="pb-btn" href="index.html">TO THE TERMINAL →</a>
+</header>
+
+<div id="pb-intro">
+  Herein: proposed patterns for <b>hyperspace corridors</b> (Plate I),
+  <b>vessels &amp; pod barges</b> with lading carried in open orbit (Plate II),
+  <b>relay beacons</b> (Plate III), and <b>specimen letterforms</b> (Plate IV).
+  Tap a specimen to mark it approved — one per plate — then press
+  <b>COPY REQUISITION</b> and forward the docket to the Drawing Office.
+  The adjustments above each plate apply to every specimen on it.
+  Nothing here alters the game.
+</div>
+
+<section class="plate" id="plate-cor">
+  <div class="plate-head">
+    <h2>PLATE I · HYPERSPACE CORRIDORS</h2>
+    <p>Thirty patterns of channel, shewn between two surveyed worlds with a vessel
+       in service. Each retains the corridor livery colours; the swatch control
+       previews any single paint, or "vary" to see the range.</p>
+  </div>
+  <div class="plate-controls" id="ctl-cor"></div>
+  <div class="grid" id="grid-cor"></div>
+</section>
+
+<section class="plate" id="plate-ship">
+  <div class="plate-head">
+    <h2>PLATE II · VESSELS &amp; POD BARGES</h2>
+    <p>Thirty hull &amp; lading arrangements. Consignments are no longer racked on
+       deck: they attend the vessel in open orbit, and each towed pod keeps its
+       own small orbit astern. Shewn at roughly twice service scale.</p>
+  </div>
+  <div class="plate-controls" id="ctl-ship"></div>
+  <div class="grid" id="grid-ship"></div>
+</section>
+
+<section class="plate" id="plate-relay">
+  <div class="plate-head">
+    <h2>PLATE III · RELAY BEACONS</h2>
+    <p>Twenty patterns of nebula relay, shewn on station in ionised weather with
+       the corridor passing through. The lamp takes the corridor's colour; the
+       structure keeps company parchment.</p>
+  </div>
+  <div class="plate-controls" id="ctl-relay"></div>
+  <div class="grid narrow" id="grid-relay"></div>
+</section>
+
+<section class="plate" id="plate-type">
+  <div class="plate-head">
+    <h2>PLATE IV · SPECIMEN LETTERFORMS</h2>
+    <p>Thirty pairings of display and text letterform, from faces already resident
+       on respectable machines (the company will not be paying font licences).
+       A specimen marked <i>substituted</i> is not installed on THIS machine and is
+       being shewn in its stand-in — judge it on a device that has it.</p>
+  </div>
+  <div class="plate-controls" id="ctl-type"></div>
+  <div class="grid" id="grid-type"></div>
+</section>
+
+<footer id="pb-foot">
+  <span class="pick">CORRIDOR <b id="pick-cor" class="none">unmarked</b></span>
+  <span class="pick">VESSEL <b id="pick-ship" class="none">unmarked</b></span>
+  <span class="pick">RELAY <b id="pick-relay" class="none">unmarked</b></span>
+  <span class="pick">LETTERFORM <b id="pick-type" class="none">unmarked</b></span>
+</footer>
+<div id="pb-toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/glyphs.js"></script>
+<script src="js/patterns.js"></script>
+</body>
+</html>
