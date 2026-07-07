@@ -103,3 +103,7 @@ make sure the showcase scene exhibits it.
 
 - Commit and push after each working milestone (verified feature, fix,
   or tuning pass) — do not batch a whole session into one commit.
+- Session continuity: read `HANDOFF.md` at the start of a session for
+  the current state, in-flight decisions and next steps. At the end of a
+  session (when asked to wrap up), refresh HANDOFF.md, move any newly
+  permanent facts into this file, and commit both.
