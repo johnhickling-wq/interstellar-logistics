@@ -3,6 +3,9 @@
   'use strict';
   window.CW = window.CW || {};
 
+  // Refresh by hand whenever a change is pushed — there is no build step.
+  CW.BUILD = '2026-07-07 09:04 UTC';
+
   var canvas;
   var lastT = 0;
 
@@ -50,6 +53,12 @@
     CW.ui.init();
     CW.initInput(canvas, function () { return CW.game; });
     CW.initDevPanel(document.getElementById('brand-mark'));
+    document.getElementById('btn-settings').addEventListener('click', function () {
+      CW.toggleDevPanel();
+    });
+
+    document.getElementById('build-stamp').textContent = 'REVISION OF ' + CW.BUILD;
+    document.getElementById('tb-rev').textContent = 'REV. ' + CW.BUILD;
 
     newGame();
     CW.ui.showStart();

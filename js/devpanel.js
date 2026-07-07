@@ -197,6 +197,8 @@
     if (visible) refreshSliders();
   }
 
+  CW.toggleDevPanel = toggle;
+
   CW.initDevPanel = function (brandEl) {
     window.addEventListener('keydown', function (e) {
       if (e.key === '`' || e.key === 'F2') { e.preventDefault(); toggle(); }

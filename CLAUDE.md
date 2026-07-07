@@ -33,7 +33,7 @@ chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/c
 (Confirm the exact `chromium-*` directory under `/opt/pw-browsers/`.)
 Drive the game via `page.evaluate` using the debug/cheat surface, e.g.:
 
-- `CW.debug.setTimeScale(8)` — fast-forward the sim (also `.colonyScreen(i)`, `.nubScreen(corIdx, end)` for pointer-gesture tests)
+- `CW.debug.setTimeScale(8)` — fast-forward the sim (also `.colonyScreen(i)`, `.nubScreen(corIdx, end)` for pointer-gesture tests). The value multiplies `config.baseTimeScale` (default 0.25), so 8 ≈ 2× real time — use larger values for fast playtests.
 - `CW.game.commitCorridorEdit(null, [colonyIds...], loop)` — build routes
 - `CW.game.assignShip(cor)` / `assignPod(cor)` / `placeHub(colony)`
 - `CW.game.cheat.*` — addShip/addRelay/addPod/addHub/spawnColony/spawnSpecial
@@ -103,6 +103,10 @@ make sure the showcase scene exhibits it.
 
 - Commit and push after each working milestone (verified feature, fix,
   or tuning pass) — do not batch a whole session into one commit.
+- Refresh the build stamp — `CW.BUILD` at the top of `js/main.js` — to
+  the current UTC date/time in any commit that changes game files. It
+  shows on the start screen and in the title block so the owner can tell
+  which revision is deployed; there is no build step, so it is manual.
 - Session continuity: read `HANDOFF.md` at the start of a session for
   the current state, in-flight decisions and next steps. At the end of a
   session (when asked to wrap up), refresh HANDOFF.md, move any newly

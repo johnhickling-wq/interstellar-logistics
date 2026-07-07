@@ -99,7 +99,8 @@
     var spread = [0.92, 0.92, 0.55, 0.92, 0.22, 0.92, 0.75, 0.92];
     g.colonies.forEach(function (c, i) { S.targets[c.id] = spread[i % spread.length]; });
 
-    g.cheatTimeScale = S.motion ? 1 : 0;
+    // undo the config base clock: the showcase runs at its designed pace
+    g.cheatTimeScale = S.motion ? 1 / (CW.config.baseTimeScale || 1) : 0;
   }
 
   /* Hold the scene in its showcase state: reserves pinned, yards
@@ -331,7 +332,7 @@
     });
     $('do-motion').addEventListener('click', function () {
       S.motion = !S.motion;
-      S.game.cheatTimeScale = S.motion ? 1 : 0;
+      S.game.cheatTimeScale = S.motion ? 1 / (CW.config.baseTimeScale || 1) : 0;
       $('do-motion').classList.toggle('active', S.motion);
     });
     $('do-distress').addEventListener('click', function () {

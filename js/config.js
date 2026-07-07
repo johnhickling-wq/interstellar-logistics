@@ -40,17 +40,19 @@
   // ---------------------------------------------------------------
   CW.DEFAULTS = {
     // Time & pace
-    dayLengthSec: 20,          // real seconds per in-game day
+    baseTimeScale: 0.25,       // master clock: everything (incl. the Tuning
+                               // Office time-scale slider) multiplies this
+    dayLengthSec: 20,          // sim seconds per in-game day
     fastSpeed: 3,              // fast-forward multiplier
 
     // Colony spawning
     colonySpawnInterval: 30,   // seconds between new colonies (start)
     colonySpawnIntervalGrowth: 1.0, // seconds added per spawn
     colonySpawnIntervalMax: 52,
-    colonyMinDist: 92,         // world units between colonies
-    spawnRadiusStart: 250,
-    spawnRadiusGrowth: 14,     // radius added per spawn
-    spawnRadiusMax: 900,
+    colonyMinDist: 200,        // world units between colonies
+    spawnRadiusStart: 500,
+    spawnRadiusGrowth: 30,     // radius added per spawn
+    spawnRadiusMax: 1900,
     weightWater: 4,
     weightFood: 2,
     weightEnergy: 1,
@@ -95,6 +97,7 @@
   // Dev panel schema: group -> [key, label, min, max, step]
   CW.TUNING_SCHEMA = [
     { group: 'Time & Pace', items: [
+      ['baseTimeScale', 'Base clock ×', 0.05, 1, 0.05],
       ['dayLengthSec', 'Day length (s)', 8, 40, 1],
       ['fastSpeed', 'Fast-forward ×', 1.5, 5, 0.5],
     ]},
@@ -102,9 +105,9 @@
       ['colonySpawnInterval', 'Spawn interval (s)', 12, 60, 1],
       ['colonySpawnIntervalGrowth', 'Interval growth /spawn', 0, 3, 0.1],
       ['colonySpawnIntervalMax', 'Interval max (s)', 25, 90, 1],
-      ['colonyMinDist', 'Min colony spacing', 50, 160, 2],
-      ['spawnRadiusStart', 'Frontier radius (start)', 150, 500, 10],
-      ['spawnRadiusGrowth', 'Frontier growth /spawn', 0, 40, 1],
+      ['colonyMinDist', 'Min colony spacing', 50, 600, 5],
+      ['spawnRadiusStart', 'Frontier radius (start)', 150, 1200, 10],
+      ['spawnRadiusGrowth', 'Frontier growth /spawn', 0, 80, 1],
       ['weightWater', 'Water weight', 0, 8, 1],
       ['weightFood', 'Food weight', 0, 8, 1],
       ['weightEnergy', 'Energy weight', 0, 8, 1],

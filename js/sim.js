@@ -808,7 +808,7 @@
     // ---------------------------------------------------- main update
     game.update = function (rawDt) {
       if (game.phase !== 'playing') return;
-      var dt = Math.min(rawDt, 0.1) * game.speed * game.cheatTimeScale;
+      var dt = Math.min(rawDt, 0.1) * (cfg.baseTimeScale || 1) * game.speed * game.cheatTimeScale;
       game.simTime += dt;
       game.day = Math.floor(game.simTime / cfg.dayLengthSec) + 1;
 
@@ -857,6 +857,8 @@
       var base = rng() * Math.PI * 2;
       var types = ['water', 'food', 'energy'];
       var placed = [];
+      // the starting triangle scales with the configured colony spacing
+      var k = cfg.colonyMinDist / 92;
       for (var i = 0; i < 3; i++) {
         var best = null;
         for (var att = 0; att < 50 && !best; att++) {
@@ -865,16 +867,16 @@
           var a = att < 12
             ? base + i * (Math.PI * 2 / 3) + (rng() - 0.5) * 0.7
             : rng() * Math.PI * 2;
-          var r = 112 + rng() * 62;
+          var r = (112 + rng() * 62) * k;
           var x = Math.cos(a) * r, y = Math.sin(a) * r * 0.62;
           if (pointInNebula(x, y, 36)) continue;
           var clear = true;
           for (var j = 0; j < placed.length; j++) {
-            if (dist2(x, y, placed[j].x, placed[j].y) < 80 * 80) { clear = false; break; }
+            if (dist2(x, y, placed[j].x, placed[j].y) < 80 * 80 * k * k) { clear = false; break; }
           }
           if (clear) best = { x: x, y: y };
         }
-        if (!best) best = { x: Math.cos(base + i * 2.1) * 150, y: Math.sin(base + i * 2.1) * 95 };
+        if (!best) best = { x: Math.cos(base + i * 2.1) * 150 * k, y: Math.sin(base + i * 2.1) * 95 * k };
         placed.push(best);
         addColony(types[i], best.x, best.y, 1);
       }

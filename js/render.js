@@ -66,7 +66,7 @@
     var count = (CW.theme && CW.theme.starCount != null) ? CW.theme.starCount : 150;
     for (var i = 0; i < count; i++) {
       stars.push({
-        x: (rnd() - 0.5) * 3000, y: (rnd() - 0.5) * 2000,
+        x: (rnd() - 0.5) * 5200, y: (rnd() - 0.5) * 3400,
         r: 0.4 + rnd() * 1.1, a: 0.08 + rnd() * 0.3,
         tw: 0.5 + rnd() * 2, ph: rnd() * 6.28,
       });
@@ -101,7 +101,7 @@
     var bw = Math.max(maxX - minX, 260), bh = Math.max(maxY - minY, 200);
     var padX = 40, padTop = 58, padBot = 74;
     var ts = Math.min((W - padX * 2) / bw, (H - padTop - padBot) / bh);
-    ts = Math.max(0.52, Math.min(1.9, ts));
+    ts = Math.max(0.22, Math.min(1.9, ts));
     var tx = (minX + maxX) / 2, ty = (minY + maxY) / 2 + (padBot - padTop) / 2 / ts;
     if (!cam.init) { cam.x = tx; cam.y = ty; cam.scale = ts; cam.init = true; return; }
     if (CW.inputActive) return; // hold steady under the player's finger
