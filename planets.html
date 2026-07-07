@@ -66,12 +66,17 @@
         Cartoon to one of Magical is a perfectly respectable order.</div>
     </details>
 
-    <details class="pw-group">
+    <details class="pw-group" open>
       <summary>THE FORGE — batch &amp; seed</summary>
       <div class="pw-item">
         <label>Worlds per batch</label>
         <input type="range" id="pw-count" min="4" max="24" step="2" value="12">
         <span class="pw-val" id="pw-count-val">12</span>
+      </div>
+      <div class="pw-item" title="How far each world may lean from the vertical. Every world has its own random lean; this sets how much of it shows.">
+        <label>Axis variation</label>
+        <input type="range" id="pw-axis" min="0" max="100" step="5" value="35">
+        <span class="pw-val" id="pw-axis-val">35%</span>
       </div>
       <div class="pw-item">
         <label>Seed</label>

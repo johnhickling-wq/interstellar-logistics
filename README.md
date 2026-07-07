@@ -139,10 +139,13 @@ a few named blends.
 
 - **Gallery** — a batch of worlds side by side; click one for the
   inspection bench (spinning close-up, survey card, witty field notes).
-- **Forge** — batch size, seed casting, per-world re-forging;
+- **Forge** — batch size, seed casting, per-world re-forging, and an
+  **axis variation** slider (every world owns a random lean from the
+  vertical; the slider sets how much of it shows — surface, rings and
+  moons tilt together while the lighting stays put);
   **COPY SPEC** exports a world + style mix as JSON.
 - Shareable/testable via query string:
-  `planets.html?seed=frome&count=12&mix=cartoon:60,magical:40&still=1`.
+  `planets.html?seed=frome&count=12&mix=cartoon:60,magical:40&axis=60&still=1`.
 
 The engine lives in `js/planetgen.js` (`CW.PlanetGen`): `generate(seed)`
 returns a serialisable spec; `render(ctx, spec, x, y, r, styleMix, t)`

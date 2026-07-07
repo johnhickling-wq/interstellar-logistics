@@ -18,6 +18,7 @@
     seedText: '',
     count: 12,
     weights: { realistic: 100, cartoon: 0, magical: 0, ink: 0, pixel: 0 },
+    axis: 35,            // % of each world's random lean that is shown
     motion: true,
     specs: [],
     tiles: [],
@@ -55,6 +56,7 @@
     try {
       localStorage.setItem(LSKEY, JSON.stringify({
         seedText: S.seedText, count: S.count, weights: S.weights,
+        axis: S.axis,
       }));
     } catch (e) { /* a browser with no drawers */ }
   }
@@ -72,6 +74,9 @@
           }
         });
       }
+      if (typeof st.axis === 'number') {
+        S.axis = Math.max(0, Math.min(100, st.axis));
+      }
     } catch (e) { /* unreadable ledger; start afresh */ }
   }
   function readQuery() {
@@ -85,6 +90,7 @@
     if (q.seed) S.seedText = q.seed;
     if (q.count) S.count = Math.max(4, Math.min(24, parseInt(q.count, 10) || S.count));
     if (q.still) { S.still = true; S.motion = false; S.time = 4.2; }
+    if (q.axis != null) S.axis = Math.max(0, Math.min(100, parseFloat(q.axis) || 0));
     if (q.mix) {
       PG.STYLE_KEYS.forEach(function (k) { S.weights[k] = 0; });
       q.mix.split(',').forEach(function (part) {
@@ -255,6 +261,13 @@
       save();
     });
 
+    $('pw-axis').addEventListener('input', function () {
+      S.axis = parseFloat($('pw-axis').value);
+      $('pw-axis-val').textContent = Math.round(S.axis) + '%';
+      S.dirty = true;
+      save();
+    });
+
     $('pw-useseed').addEventListener('click', function () {
       var v = $('pw-seed').value.trim();
       if (!v) { toast('The forge requires a seed, however small.'); return; }
@@ -282,7 +295,8 @@
     $('pw-copyspec').addEventListener('click', function () {
       var spec = S.specs[S.sel];
       if (!spec) return;
-      var out = JSON.stringify({ styleMix: S.weights, spec: spec }, null, 2);
+      var out = JSON.stringify({ styleMix: S.weights,
+        axisVariation: S.axis / 100, spec: spec }, null, 2);
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(out).then(function () {
           toast('Specification copied. Handle with clean gloves.');
@@ -295,10 +309,15 @@
 
   // ------------------------------------------------------------ painting
   function drawAll(budget) {
+    var axis = S.axis / 100;
     var spec = S.specs[S.sel];
-    if (spec) PG.renderInto($('pw-detail'), spec, S.mix, S.time, { budget: budget, maxTex: 288 });
+    if (spec) {
+      PG.renderInto($('pw-detail'), spec, S.mix, S.time,
+        { budget: budget, maxTex: 288, axis: axis });
+    }
     S.tiles.forEach(function (t) {
-      PG.renderInto(t.canvas, t.spec, S.mix, S.time, { budget: budget, maxTex: 128 });
+      PG.renderInto(t.canvas, t.spec, S.mix, S.time,
+        { budget: budget, maxTex: 128, axis: axis });
     });
   }
 
@@ -306,11 +325,17 @@
   function loop(t) {
     var dt = Math.min((t - lastT) / 1000, 0.1) || 0.016;
     lastT = t;
-    if (S.motion) S.time += dt;
-    if (S.motion || S.dirty) {
-      var budget = { n: 3 };   // textures rebuilt a few per frame
-      drawAll(budget);
-      if (!S.motion) S.dirty = budget.n <= 0;  // stale textures remain
+    try {
+      if (S.motion) S.time += dt;
+      if (S.motion || S.dirty) {
+        // in motion, textures rebuild a few per frame to keep the
+        // animation smooth; paused, one slow frame settles everything
+        var budget = { n: S.motion ? 3 : 64 };
+        drawAll(budget);
+        if (!S.motion) S.dirty = budget.n <= 0;
+      }
+    } catch (err) {
+      if (window.console) console.error(err);
     }
     requestAnimationFrame(loop);
   }
@@ -323,6 +348,8 @@
     $('pw-seed').value = S.seedText;
     $('pw-count').value = S.count;
     $('pw-count-val').textContent = S.count;
+    $('pw-axis').value = S.axis;
+    $('pw-axis-val').textContent = Math.round(S.axis) + '%';
     $('pw-motion').classList.toggle('active', S.motion);
     buildMixer();
     rebuildMix();

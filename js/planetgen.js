@@ -396,7 +396,7 @@
 
     var caps = null;
     var capOdds = { terran: 0.75, ocean: 0.35, desert: 0.2, rock: 0.15 }[arch.id] || 0;
-    if (rng() < capOdds) caps = { lat: 0.76 + rng() * 0.12 };
+    if (rng() < capOdds) caps = { lat: 0.82 + rng() * 0.10 };
 
     var lights = arch.id === 'terran' && rng() < 0.4;
 
@@ -445,6 +445,11 @@
       notes: [ARCH_NOTES[arch.id], REMARKS[(rng() * REMARKS.length) | 0]],
     };
 
+    // each world leans at its own angle; the renderer's axis option
+    // (0..1) scales how much of the full lean is actually shown.
+    // Drawn last so earlier seeds keep casting identical worlds.
+    spec.axisTilt = (rng() - 0.5) * 2;
+
     // how far the ensemble reaches, in planet radii — for fitting views
     var extent = 1.32;
     if (rings) extent = Math.max(extent, rings.r1 + 0.12);
@@ -476,11 +481,15 @@
       var swirl = Math.sin(d / (sp.r * 3.4) * 9 - 1.5) * 0.10 * k;
       return lerp(t, sp.dark ? 0.12 : 0.94, k * 0.85) + swirl;
     }
-    function capT(v, t) {
+    function capT(ax, ay, v, t) {
       if (!spec.caps) return t;
       var lat = Math.abs(v - 0.5) * 2;
-      var edge = spec.caps.lat + (noise.fbm(v * 8, 3.7, 9.1, 2) - 0.5) * 0.10;
-      if (lat > edge) return lerp(t, 0.985, smooth(edge, edge + 0.07, lat));
+      // the frost line must wander with longitude (ax/ay), or the cap
+      // shears off in an implausibly tidy straight line
+      var edge = spec.caps.lat
+        + (noise.fbm(ax * 2.3, ay * 2.3, v * 4.5 + 5.1, 3) - 0.5) * 0.16
+        + (noise.fbm(ax * 6.1, ay * 6.1, v * 9 + 2.7, 2) - 0.5) * 0.06;
+      if (lat > edge) return lerp(t, 0.985, smooth(edge, edge + 0.04, lat));
       return t;
     }
     switch (spec.arch) {
@@ -490,21 +499,21 @@
         var t;
         if (c < sl) { t = (c / sl) * 0.46; out.land = 0; }
         else { t = 0.52 + (c - sl) / (1 - sl) * 0.46; out.land = 1; }
-        out.t = capT(v, t); out.e = 0;
+        out.t = capT(ax, ay, v, t); out.e = 0;
         return out;
       };
       case 'ocean': return function (ax, ay, u, v) {
         var c = noise.fbm(ax * f, ay * f, v * f * 2, oct);
         var t = 0.16 + c * 0.42;
         if (c > 0.74) t = 0.62 + (c - 0.74) * 1.4;   // scattered atolls
-        out.t = capT(v, t); out.e = 0; out.land = c > 0.74 ? 1 : 0;
+        out.t = capT(ax, ay, v, t); out.e = 0; out.land = c > 0.74 ? 1 : 0;
         return out;
       };
       case 'desert': return function (ax, ay, u, v) {
         var w = noise.fbm(ax * f * 0.8, ay * f * 0.8, v * f, 3) - 0.5;
         var t = 0.48 + 0.28 * Math.sin(v * Math.PI * spec.bandN + w * 5.5)
           + (noise.fbm(ax * f * 2.2, ay * f * 2.2, v * f * 4, oct) - 0.5) * 0.34;
-        out.t = capT(v, clamp(t, 0, 1)); out.e = 0;
+        out.t = capT(ax, ay, v, clamp(t, 0, 1)); out.e = 0;
         return out;
       };
       case 'ice': return function (ax, ay, u, v) {
@@ -539,7 +548,7 @@
         var mare = noise.fbm(ax * f * 0.45, ay * f * 0.45, v * f, 3);
         var t = 0.42 + c * 0.34;
         if (mare < 0.42) t -= 0.22;                   // dark maria
-        out.t = capT(v, clamp(t, 0, 1)); out.e = 0;
+        out.t = capT(ax, ay, v, clamp(t, 0, 1)); out.e = 0;
         return out;
       };
       case 'toxic': return function (ax, ay, u, v) {
@@ -870,11 +879,11 @@
     ctx.restore();
   }
 
-  function drawRingHalf(ctx, spec, r, P, half) {
+  function drawRingHalf(ctx, spec, r, P, half, axis) {
     var R = spec.rings;
     if (!R) return;
     ctx.save();
-    ctx.rotate(R.tilt);
+    ctx.rotate(R.tilt + axis);
     var big = r * (R.r1 + 0.6) + 6;
     ctx.beginPath();
     if (half < 0) ctx.rect(-big, -big, big * 2, big);
@@ -1008,6 +1017,10 @@
     var D = clamp(Math.round(2 * r), 48, maxTex);
     var tex = ensureTexture(spec, D, P, opts && opts.budget);
     var u = (t * spec.spin) % 1;
+    // axial lean: the surface, rings and moons tilt together; the
+    // lighting stays put, since the sun takes no instruction from us
+    var axis = (spec.axisTilt || 0) *
+      ((opts && opts.axis != null) ? opts.axis : 0) * 0.75;
 
     // enchanted aura, behind everything
     if (P.glow > 0.03) {
@@ -1028,7 +1041,7 @@
       var a = m.ph + t * m.omega;
       var ox = Math.cos(a) * m.dist * r;
       var oy = Math.sin(a) * m.dist * r * m.incl;
-      var ct = Math.cos(spec.moonTilt), st = Math.sin(spec.moonTilt);
+      var ct = Math.cos(spec.moonTilt + axis), st = Math.sin(spec.moonTilt + axis);
       var mx = ox * ct - oy * st, my = ox * st + oy * ct;
       var z = Math.sin(a);
       var mr = m.size * r * (1 + z * 0.12);
@@ -1038,7 +1051,7 @@
     // survey orbit guides, when the ink is strong
     if (P.hatch > 0.3 && spec.moons.length) {
       ctx.save();
-      ctx.rotate(spec.moonTilt);
+      ctx.rotate(spec.moonTilt + axis);
       ctx.strokeStyle = css(PARCH, 0.12 * P.hatch);
       ctx.lineWidth = Math.max(0.5, r * 0.012);
       ctx.setLineDash([3, 4]);
@@ -1051,7 +1064,7 @@
       ctx.restore();
     }
 
-    drawRingHalf(ctx, spec, r, P, -1);
+    drawRingHalf(ctx, spec, r, P, -1, axis);
     behind.forEach(function (b) { drawMoon(ctx, spec, b.m, b.x, b.y, b.r, P, true); });
 
     // ------- the disc
@@ -1059,6 +1072,8 @@
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.clip();
+    ctx.save();
+    ctx.rotate(axis);   // surface leans; the clip circle doesn't care
     ctx.fillStyle = css(hsl(spec.hue, 0.35, 0.4));
     ctx.fillRect(-r, -r, 2 * r, 2 * r);
     if (tex) {
@@ -1071,6 +1086,7 @@
       }
       if (tex.emis) drawEmissive(ctx, tex, u, r, spec.arch === 'lava' ? 0.5 : 0.06);
     }
+    ctx.restore();
     shadeSphere(ctx, r, P);
     drawHatch(ctx, r, P);
     ctx.restore();
@@ -1111,7 +1127,7 @@
     }
 
     drawOutline(ctx, spec, r, P);
-    drawRingHalf(ctx, spec, r, P, 1);
+    drawRingHalf(ctx, spec, r, P, 1, axis);
     front.forEach(function (f) { drawMoon(ctx, spec, f.m, f.x, f.y, f.r, P, false); });
     drawSparkles(ctx, spec, r, P, t);
   }
@@ -1140,7 +1156,7 @@
     sctx.clearRect(0, 0, size, size);
     sctx.translate(size / 2, size / 2);
     drawWorld(sctx, spec, r / cell, P, t,
-      { budget: opts && opts.budget, maxTex: 96 });
+      { budget: opts && opts.budget, maxTex: 96, axis: opts && opts.axis });
     var prev = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(stage, 0, 0, size, size,
