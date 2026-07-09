@@ -79,7 +79,8 @@ body {
 .swatch.on { outline-color: var(--parch); }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-.grid.narrow { grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); }
+.grid.single { grid-template-columns: 1fr; }
+.grid.trio { grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); }
 
 .card {
   background: var(--ink-raise); border: 1px solid var(--parch-faint);
@@ -150,11 +151,12 @@ body {
 </header>
 
 <div id="pb-intro">
-  Herein: proposed patterns for <b>hyperspace corridors</b> (Plate I),
-  <b>vessels &amp; pod barges</b> with lading carried in open orbit (Plate II),
-  <b>relay beacons</b> (Plate III), and <b>specimen letterforms</b> (Plate IV).
-  Tap a specimen to mark it approved — one per plate — then press
-  <b>COPY REQUISITION</b> and forward the docket to the Drawing Office.
+  <b>Second edition.</b> The Board reviewed the first printing and found it
+  wanting: thirty line styles are not nine beautiful objects. Herein instead:
+  three <b>corridors</b>, three <b>vessels</b> and three <b>relay beacons</b>,
+  worked up to the standard of the planets — soft, layered, quietly luminous —
+  plus the specimen letterforms (Plate IV) carried over unchanged.
+  Tap a specimen to mark it approved, then press <b>COPY REQUISITION</b>.
   The adjustments above each plate apply to every specimen on it.
   Nothing here alters the game.
 </div>
@@ -162,34 +164,36 @@ body {
 <section class="plate" id="plate-cor">
   <div class="plate-head">
     <h2>PLATE I · HYPERSPACE CORRIDORS</h2>
-    <p>Thirty patterns of channel, shewn between two surveyed worlds with a vessel
-       in service. Each retains the corridor livery colours; the swatch control
-       previews any single paint, or "vary" to see the range.</p>
+    <p>Three patterns of channel, shewn at length between two surveyed worlds with
+       vessels passing in <i>both</i> directions — corridors are infrastructure, not
+       traffic, so nothing in the channel flows one way. Each keeps the corridor
+       livery; the swatch control previews any single paint.</p>
   </div>
   <div class="plate-controls" id="ctl-cor"></div>
-  <div class="grid" id="grid-cor"></div>
+  <div class="grid single" id="grid-cor"></div>
 </section>
 
 <section class="plate" id="plate-ship">
   <div class="plate-head">
     <h2>PLATE II · VESSELS &amp; POD BARGES</h2>
-    <p>Thirty hull &amp; lading arrangements. Consignments are no longer racked on
-       deck: they attend the vessel in open orbit, and each towed pod keeps its
-       own small orbit astern. Shewn at roughly twice service scale.</p>
+    <p>Three vessels of the line — coastal steamers that took a wrong turn into
+       hyperspace. Consignments attend the vessel in open orbit rather than racked
+       on deck, and each towed pod keeps its own small orbit astern. Shewn at
+       roughly three times service scale.</p>
   </div>
   <div class="plate-controls" id="ctl-ship"></div>
-  <div class="grid" id="grid-ship"></div>
+  <div class="grid trio" id="grid-ship"></div>
 </section>
 
 <section class="plate" id="plate-relay">
   <div class="plate-head">
     <h2>PLATE III · RELAY BEACONS</h2>
-    <p>Twenty patterns of nebula relay, shewn on station in ionised weather with
-       the corridor passing through. The lamp takes the corridor's colour; the
-       structure keeps company parchment.</p>
+    <p>Three patterns of nebula relay, on station in ionised weather with the
+       corridor passing through — harbour furniture for deep space. The lamp takes
+       the corridor's colour; the instrument keeps company brass.</p>
   </div>
   <div class="plate-controls" id="ctl-relay"></div>
-  <div class="grid narrow" id="grid-relay"></div>
+  <div class="grid trio" id="grid-relay"></div>
 </section>
 
 <section class="plate" id="plate-type">

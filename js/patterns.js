@@ -1,8 +1,10 @@
-/* patterns.js — The Pattern Book. A specimen catalogue for the Board:
-   thirty corridor patterns, thirty vessel & lading arrangements, twenty
-   relay beacons and thirty letterform pairings, drawn live so their
-   manners can be judged in motion. Selections and adjustments are kept
-   in this browser and exported as a requisition docket. Nothing here
+/* patterns.js — The Pattern Book, second edition. The first printing
+   taught the Board a lesson: thirty line styles are not nine beautiful
+   objects. This edition presents three corridors, three vessels and
+   three relay beacons, worked to the standard of the planets — soft,
+   layered, quietly luminous, faintly magical — plus the letterform
+   specimens carried over unchanged. Selections and adjustments persist
+   in this browser and export as a requisition docket. Nothing here
    alters the game. */
 (function () {
   'use strict';
@@ -13,6 +15,7 @@
   var COLS = CW.CORRIDOR_COLOURS.map(function (c) { return c.hex; });
   var TINTS = [TH.planet0, TH.planet1, TH.planet2, TH.planet3,
     TH.planet4, TH.planet5, TH.planet6, TH.planet7];
+  var WARM = '#ffd9a0';           // lamplight
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
   // ------------------------------------------------------------ colour
@@ -32,12 +35,18 @@
     var c = chan(INK);
     return 'rgba(' + Math.round(c[0] * 0.72) + ',' + Math.round(c[1] * 0.72) + ',' + Math.round(c[2] * 0.76) + ',' + a + ')';
   }
-  function rngFor(seed) { // small deterministic PRNG per specimen
+  function rngFor(seed) {
     var s = seed * 2654435761 % 4294967296;
     return function () {
       s = (s * 1664525 + 1013904223) % 4294967296;
       return s / 4294967296;
     };
+  }
+  // small value noise for organic variation
+  function hash1(n) { var s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); }
+  function noise1(x) {
+    var i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
+    return hash1(i) * (1 - u) + hash1(i + 1) * u;
   }
 
   // ------------------------------------------------------------ paths
@@ -64,12 +73,23 @@
       },
     };
   }
+  // a gentle drape between two worlds: quadratic bézier, finely sampled
+  function makeCurve(p0, pc, p1, n) {
+    var pts = [];
+    for (var i = 0; i <= n; i++) {
+      var u = i / n, v = 1 - u;
+      pts.push({
+        x: v * v * p0.x + 2 * v * u * pc.x + u * u * p1.x,
+        y: v * v * p0.y + 2 * v * u * pc.y + u * u * p1.y,
+      });
+    }
+    return makePath(pts);
+  }
   function trace(c, pts) {
     c.beginPath();
     c.moveTo(pts[0].x, pts[0].y);
     for (var i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
   }
-  // polyline offset by averaged point normals (adequate for gentle bends)
   function offset(pts, d) {
     var out = [];
     for (var i = 0; i < pts.length; i++) {
@@ -88,24 +108,70 @@
     trace(c, pts);
     c.stroke();
   }
+  // variable-width filled ribbon along a path
+  function ribbon(c, P, halfW, style, a) {
+    var up = [], down = [];
+    for (var d = 0; d <= P.len; d += 4) {
+      var p = P.at(d), hw = halfW(d);
+      up.push({ x: p.x + p.nx * hw, y: p.y + p.ny * hw });
+      down.push({ x: p.x - p.nx * hw, y: p.y - p.ny * hw });
+    }
+    c.fillStyle = alphaCol(style, a);
+    c.beginPath();
+    c.moveTo(up[0].x, up[0].y);
+    up.forEach(function (p) { c.lineTo(p.x, p.y); });
+    down.reverse().forEach(function (p) { c.lineTo(p.x, p.y); });
+    c.closePath();
+    c.fill();
+  }
+  // a soft luminous point: layered radial falloff
+  function glowDot(c, x, y, r, hex, a) {
+    if (a <= 0.003 || r <= 0) return;
+    var g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, alphaCol(hex, a));
+    g.addColorStop(0.45, alphaCol(hex, a * 0.38));
+    g.addColorStop(1, alphaCol(hex, 0));
+    c.fillStyle = g;
+    c.beginPath(); c.arc(x, y, r, 0, 6.29); c.fill();
+  }
 
   // ------------------------------------------------------------ scenery
-  function paintSpace(c, w, h, rnd, starN) {
-    c.fillStyle = INK;
-    c.fillRect(0, 0, w, h);
-    for (var i = 0; i < starN; i++) {
-      c.fillStyle = alphaCol(TH.starColour, 0.06 + rnd() * 0.26);
-      var r = 0.4 + rnd() * 1.0;
-      c.fillRect(rnd() * w, rnd() * h, r, r);
+  function makeStars(rnd, n, W, H) {
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      out.push([rnd() * W, rnd() * H, 0.4 + rnd() * 1.1, 0.05 + rnd() * 0.26,
+        0.5 + rnd() * 1.8, rnd() * 6.28]);
     }
-    var g = c.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, w * 0.75);
+    return out;
+  }
+  function drawStars(c, stars, t) {
+    stars.forEach(function (s) {
+      c.fillStyle = alphaCol(TH.starColour, s[3] * (0.7 + 0.3 * Math.sin(t * s[4] + s[5])));
+      c.fillRect(s[0], s[1], s[2], s[2]);
+    });
+  }
+  function vignette(c, w, h) {
+    var g = c.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, w * 0.72);
     g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, 'rgba(0,0,0,0.42)');
+    g.addColorStop(1, 'rgba(0,0,0,0.45)');
     c.fillStyle = g;
     c.fillRect(0, 0, w, h);
   }
+  function nebulaWash(c, blobs, t, aMul) {
+    if (aMul <= 0.02) return;
+    blobs.forEach(function (b, i) {
+      var breathe = 1 + 0.12 * Math.sin(t * 0.22 + i * 2.1);
+      var g = c.createRadialGradient(b[0], b[1], 4, b[0], b[1], b[2]);
+      g.addColorStop(0, 'hsla(' + b[3] + ',52%,62%,' + (0.15 * aMul * breathe) + ')');
+      g.addColorStop(0.6, 'hsla(' + b[3] + ',52%,58%,' + (0.07 * aMul * breathe) + ')');
+      g.addColorStop(1, 'hsla(' + b[3] + ',52%,58%,0)');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(b[0], b[1], b[2], 0, 6.29); c.fill();
+    });
+  }
 
   function paintPlanet(c, x, y, R, tint, seed, glyphType) {
+    glowDot(c, x, y, R * 2.3, tint, 0.16); // atmospheric presence
     var g = c.createRadialGradient(x - R * 0.38, y - R * 0.42, R * 0.12, x, y, R * 1.02);
     g.addColorStop(0, mix(tint, '#dfe8f2', 0.32));
     g.addColorStop(0.55, tint);
@@ -132,6 +198,13 @@
         c.fill();
       }
     }
+    // night side
+    var tg = c.createRadialGradient(x - R * 0.5, y - R * 0.5, R * 0.4, x - R * 0.5, y - R * 0.5, R * 2.1);
+    tg.addColorStop(0, dark(0));
+    tg.addColorStop(0.72, dark(0));
+    tg.addColorStop(1, dark(0.55));
+    c.fillStyle = tg;
+    c.fillRect(x - R, y - R, R * 2, R * 2);
     c.restore();
     c.strokeStyle = 'rgba(220,230,240,0.22)';
     c.lineWidth = 1;
@@ -142,17 +215,7 @@
     }
   }
 
-  // parchment consignment chip with a solid cargo glyph — the floating crate
-  function chip(c, x, y, s, type, a) {
-    c.save();
-    c.globalAlpha = a;
-    c.fillStyle = dark(0.5);
-    rrect(c, x - s / 2 + 1, y - s / 2 + 1.6, s, s, 1.4); c.fill();
-    c.fillStyle = PARCH;
-    rrect(c, x - s / 2, y - s / 2, s, s, 1.4); c.fill();
-    CW.drawGlyph(c, type, x, y, s * 0.4, 'solid', dark(0.92));
-    c.restore();
-  }
+  // a floating consignment: parchment chip, soft shadow, cargo glyph
   function rrect(c, x, y, w, h, r) {
     c.beginPath();
     c.moveTo(x + r, y);
@@ -161,6 +224,23 @@
     c.arcTo(x, y + h, x, y, r);
     c.arcTo(x, y, x + w, y, r);
     c.closePath();
+  }
+  function chip(c, x, y, s, type, a) {
+    c.save();
+    c.globalAlpha = a;
+    c.shadowColor = 'rgba(0,0,0,0.5)';
+    c.shadowBlur = 4;
+    c.shadowOffsetY = 2.5;
+    c.fillStyle = mix(PARCH, '#8f8468', 0.18);
+    rrect(c, x - s / 2, y - s / 2, s, s, 2.2); c.fill();
+    c.shadowColor = 'transparent';
+    var g = c.createLinearGradient(x - s / 2, y - s / 2, x + s / 2, y + s / 2);
+    g.addColorStop(0, alphaCol('#fff8e6', 0.5));
+    g.addColorStop(1, alphaCol('#fff8e6', 0));
+    c.fillStyle = g;
+    rrect(c, x - s / 2, y - s / 2, s, s, 2.2); c.fill();
+    CW.drawGlyph(c, type, x, y, s * 0.38, 'solid', dark(0.88));
+    c.restore();
   }
 
   // ------------------------------------------------------------ card loop
@@ -261,1019 +341,697 @@
   }
 
   // ================================================================
-  // PLATE I — corridors
+  // PLATE I — three corridors
   // ================================================================
-  var corS = { weight: 1, glow: 1, alpha: 0.9, speed: 1, density: 1, colour: -1 };
+  var corS = { weight: 1, glow: 1, alpha: 0.9, shimmer: 1, density: 1, colour: -1 };
 
-  /* Each pattern draws between two worlds; x = { c, P, col, t, S, rnd }.
-     P is the trimmed path; S the plate settings. */
+  /* Each pattern draws a bidirectional channel. x = {c, P, col, t, S, seed}.
+     Nothing may flow one way: animation is breathing, shimmer, twinkle. */
   var CORRIDORS = [
-    ['Hairline', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1.1 * x.S.weight, 0.95);
-      x.P.pts.forEach(function (p, i) {
-        if (i === 0 || i === x.P.pts.length - 1) {
-          x.c.fillStyle = alphaCol(x.col, 0.95);
-          x.c.beginPath(); x.c.arc(p.x, p.y, 1.9, 0, 6.29); x.c.fill();
-        }
+    ['Aurora Conduit', 'ionised ribbon · breathing glow', function (x) {
+      var c = x.c, S = x.S, col = x.col, t = x.t;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      // layered translucent ribbon, width wandering slowly along and in time
+      [[15, 0.05, 3.1], [8.5, 0.085, 7.7], [4.2, 0.13, 12.9]].forEach(function (L, li) {
+        var breathe = 0.92 + 0.08 * Math.sin(t * 0.5 * S.shimmer + li * 1.7);
+        ribbon(c, x.P, function (d) {
+          var n = noise1(d * 0.016 + L[2] + t * 0.10 * S.shimmer);
+          return (L[0] * (0.55 + 0.5 * n)) * S.weight * breathe + 0.4;
+        }, mix(col, li === 2 ? PARCH : col, li === 2 ? 0.25 : 0), L[1] * S.glow);
       });
-    }],
-    ['Twin Rails', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 11 * x.S.weight, 0.07 * x.S.glow);
-      strokePts(x.c, offset(x.P.pts, 2.3 * x.S.weight), x.col, 1.1 * x.S.weight, 0.9);
-      strokePts(x.c, offset(x.P.pts, -2.3 * x.S.weight), x.col, 1.1 * x.S.weight, 0.9);
-    }],
-    ['Soft Beam', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 15 * x.S.weight, 0.05 * x.S.glow);
-      strokePts(x.c, x.P.pts, x.col, 8 * x.S.weight, 0.08 * x.S.glow);
-      strokePts(x.c, x.P.pts, x.col, 3.5 * x.S.weight, 0.16 * x.S.glow);
-      strokePts(x.c, x.P.pts, x.col, 1.5 * x.S.weight, 0.95);
-    }],
-    ['Gossamer', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 18 * x.S.weight, 0.09 * x.S.glow);
-      strokePts(x.c, x.P.pts, mix(x.col, PARCH, 0.35), 0.9 * x.S.weight, 1);
-    }],
-    ['Glass Conduit', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 9 * x.S.weight, 0.14);
-      strokePts(x.c, x.P.pts, x.col, 9 * x.S.weight, 0.06 * x.S.glow);
-      strokePts(x.c, offset(x.P.pts, 4.4 * x.S.weight), x.col, 0.9, 0.6);
-      strokePts(x.c, offset(x.P.pts, -4.4 * x.S.weight), x.col, 0.9, 0.6);
-    }],
-    ['Aurora Ribbon', function (x) {
-      var step = 5;
-      for (var d = 0; d < x.P.len; d += step) {
-        var p0 = x.P.at(d), p1 = x.P.at(Math.min(x.P.len, d + step + 0.5));
-        var a = 0.07 + 0.07 * Math.sin(d * 0.06 - x.t * 2.2 * x.S.speed) +
-                0.04 * Math.sin(d * 0.021 + x.t * 1.1 * x.S.speed);
-        x.c.strokeStyle = alphaCol(x.col, a * x.S.glow + 0.02);
-        x.c.lineWidth = 11 * x.S.weight;
-        x.c.lineCap = 'butt';
-        x.c.beginPath(); x.c.moveTo(p0.x, p0.y); x.c.lineTo(p1.x, p1.y); x.c.stroke();
+      // internal shimmer: slow alpha weather along the length, no travel
+      for (var d = 0; d < x.P.len; d += 7) {
+        var p0 = x.P.at(d), p1 = x.P.at(Math.min(x.P.len, d + 7.5));
+        var a = 0.08 + 0.11 * noise1(d * 0.045 + t * 0.22 * S.shimmer);
+        c.strokeStyle = alphaCol(mix(col, PARCH, 0.3), a);
+        c.lineWidth = 1.7 * S.weight;
+        c.lineCap = 'butt';
+        c.beginPath(); c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y); c.stroke();
       }
-      strokePts(x.c, x.P.pts, x.col, 1, 0.5);
-    }],
-    ['Particle Stream', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.13);
-      var sp = 9 / x.S.density, n = Math.floor(x.P.len / sp);
+      // tiny stationary sparkles, each twinkling to its own clock
+      var rnd = rngFor(x.seed * 3 + 11);
+      var n = Math.round(16 * S.density);
       for (var i = 0; i < n; i++) {
-        var d = (i * sp + x.t * 34 * x.S.speed) % x.P.len;
-        var p = x.P.at(d);
-        var a = 0.45 + 0.4 * Math.sin(i * 2.4 + x.t * 3);
-        x.c.fillStyle = alphaCol(x.col, 0.12 * x.S.glow);
-        x.c.beginPath(); x.c.arc(p.x, p.y, 3 * x.S.weight, 0, 6.29); x.c.fill();
-        x.c.fillStyle = alphaCol(x.col, a);
-        x.c.beginPath(); x.c.arc(p.x, p.y, 1.3 * x.S.weight, 0, 6.29); x.c.fill();
+        var dd = rnd() * x.P.len, off = (rnd() - 0.5) * 14 * S.weight;
+        var ph = rnd() * 6.28, tw = 0.7 + rnd() * 1.3;
+        var p = x.P.at(dd);
+        var a2 = Math.pow(0.5 + 0.5 * Math.sin(t * tw * S.shimmer + ph), 3) * 0.8;
+        var sx = p.x + p.nx * off, sy = p.y + p.ny * off;
+        glowDot(c, sx, sy, 2.6, mix(col, PARCH, 0.5), a2 * 0.5);
+        c.fillStyle = alphaCol('#fff6e0', a2);
+        c.fillRect(sx - 0.5, sy - 0.5, 1, 1);
       }
+      c.restore();
     }],
-    ['Comet Run', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.1);
-      for (var k = 0; k < 3; k++) {
-        var head = (x.P.len * k / 3 + x.t * 44 * x.S.speed) % x.P.len;
-        for (var i = 0; i < 9; i++) {
-          var d0 = head - i * 3.2, d1 = head - (i + 1) * 3.2;
-          if (d1 < 0) break;
-          var f = 1 - i / 9;
-          x.c.strokeStyle = alphaCol(x.col, 0.55 * f * f);
-          x.c.lineWidth = 2.6 * f * x.S.weight;
-          x.c.lineCap = 'round';
-          var a0 = x.P.at(d0), a1 = x.P.at(d1);
-          x.c.beginPath(); x.c.moveTo(a0.x, a0.y); x.c.lineTo(a1.x, a1.y); x.c.stroke();
+
+    ['Twin Rail Beacon Line', 'luminous rails · brass locator studs', function (x) {
+      var c = x.c, S = x.S, col = x.col, t = x.t;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      strokePts(c, x.P.pts, col, 15 * S.weight, 0.045 * S.glow); // ambient field
+      c.restore();
+      // the dark channel between the rails
+      strokePts(c, x.P.pts, INK, 3.4 * S.weight, 0.55);
+      // each rail: soft under-glow, then a core laid in short spans so
+      // individual lengths can flicker like gas mantles
+      [2.6, -2.6].forEach(function (o, ri) {
+        var railPts = offset(x.P.pts, o * S.weight);
+        var railP = makePath(railPts);
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        strokePts(c, railPts, col, 3.4 * S.weight, 0.16 * S.glow);
+        c.restore();
+        var span = 9;
+        for (var i = 0; i * span < railP.len; i++) {
+          var d0 = i * span, d1 = Math.min(railP.len, d0 + span + 0.6);
+          var h = hash1(i * 13.7 + ri * 99 + Math.floor(t * 2.4 * S.shimmer) * 0.618);
+          var a = 0.82;
+          if (h > 0.955) a = 0.4;             // a mantle dims
+          else if (h < 0.035) a = 1;          // a mantle surges
+          var p0 = railP.at(d0), p1 = railP.at(d1);
+          c.strokeStyle = alphaCol(mix(col, PARCH, 0.22), a);
+          c.lineWidth = 1.15 * S.weight;
+          c.lineCap = 'butt';
+          c.beginPath(); c.moveTo(p0.x, p0.y); c.lineTo(p1.x, p1.y); c.stroke();
         }
-        var hp = x.P.at(head);
-        x.c.fillStyle = alphaCol(x.col, 0.14 * x.S.glow);
-        x.c.beginPath(); x.c.arc(hp.x, hp.y, 5 * x.S.weight, 0, 6.29); x.c.fill();
-        x.c.fillStyle = mix(x.col, PARCH, 0.5);
-        x.c.beginPath(); x.c.arc(hp.x, hp.y, 1.8 * x.S.weight, 0, 6.29); x.c.fill();
-      }
-    }],
-    ['Firefly Path', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.17);
-      var n = Math.round(9 * x.S.density);
-      for (var i = 0; i < n; i++) {
-        var dir = i % 2 ? 1 : -1;
-        var d = ((i * 37.7 + x.t * 11 * x.S.speed * dir) % x.P.len + x.P.len) % x.P.len;
-        var p = x.P.at(d);
-        var wob = Math.sin(x.t * 1.7 + i * 2.6) * 3;
-        var a = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(x.t * 2.6 + i * 1.9));
-        x.c.fillStyle = alphaCol(x.col, a);
-        x.c.beginPath();
-        x.c.arc(p.x + p.nx * wob, p.y + p.ny * wob, 1.2 * x.S.weight, 0, 6.29);
-        x.c.fill();
-      }
-    }],
-    ['Pearl String', function (x) {
-      var sp = 12 / x.S.density, n = Math.floor(x.P.len / sp);
-      var lit = Math.floor(x.t * 7 * x.S.speed) % (n + 1);
-      for (var i = 0; i <= n; i++) {
-        var p = x.P.at(i * sp);
-        var isLit = i === lit;
-        x.c.fillStyle = alphaCol(x.col, 0.1 * x.S.glow + (isLit ? 0.2 : 0));
-        x.c.beginPath(); x.c.arc(p.x, p.y, 4 * x.S.weight, 0, 6.29); x.c.fill();
-        x.c.fillStyle = isLit ? mix(x.col, PARCH, 0.6) : alphaCol(x.col, 0.75);
-        x.c.beginPath(); x.c.arc(p.x, p.y, 1.7 * x.S.weight, 0, 6.29); x.c.fill();
-      }
-    }],
-    ['Ordnance Dashes', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.12);
-      x.c.save();
-      x.c.setLineDash([13 / x.S.density, 9 / x.S.density]);
-      x.c.lineDashOffset = -x.t * 22 * x.S.speed;
-      strokePts(x.c, x.P.pts, x.col, 1.7 * x.S.weight, 0.9);
-      x.c.restore();
-    }],
-    ['Ephemeris Dots', function (x) {
-      x.c.save();
-      x.c.setLineDash([0.1, 7.5 / x.S.density]);
-      x.c.lineDashOffset = -x.t * 6 * x.S.speed;
-      strokePts(x.c, x.P.pts, x.col, 2.7 * x.S.weight, 0.9);
-      x.c.restore();
-    }],
-    ['Chevron Flow', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.15);
-      var sp = 15 / x.S.density;
-      for (var d = (x.t * 26 * x.S.speed) % sp; d < x.P.len; d += sp) {
-        var p = x.P.at(d), s = 3.6 * x.S.weight;
-        x.c.strokeStyle = alphaCol(x.col, 0.8);
-        x.c.lineWidth = 1.3 * x.S.weight;
-        x.c.lineCap = 'round';
-        x.c.beginPath();
-        x.c.moveTo(p.x - p.dx * s + p.nx * s, p.y - p.dy * s + p.ny * s);
-        x.c.lineTo(p.x, p.y);
-        x.c.lineTo(p.x - p.dx * s - p.nx * s, p.y - p.dy * s - p.ny * s);
-        x.c.stroke();
-      }
-    }],
-    ['Survey Ticks', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1.1 * x.S.weight, 0.8);
-      var sp = 11 / x.S.density;
-      x.c.lineWidth = 0.8;
-      x.c.strokeStyle = alphaCol(x.col, 0.5);
-      for (var d = sp / 2; d < x.P.len; d += sp) {
-        var p = x.P.at(d), s = 2.6 * x.S.weight;
-        x.c.beginPath();
-        x.c.moveTo(p.x + p.nx * s, p.y + p.ny * s);
-        x.c.lineTo(p.x - p.nx * s, p.y - p.ny * s);
-        x.c.stroke();
-      }
-      [0, x.P.len].forEach(function (d) {
-        var p = x.P.at(d);
-        x.c.beginPath(); x.c.arc(p.x, p.y, 3.4, 0, 6.29);
-        x.c.strokeStyle = alphaCol(x.col, 0.9); x.c.lineWidth = 1.1; x.c.stroke();
       });
+      // brass locator studs down the centre of the channel
+      var sp = 32 / S.density;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      for (var d = sp * 0.5; d < x.P.len; d += sp) {
+        var p = x.P.at(d);
+        glowDot(c, p.x, p.y, 3.2, BRASS, 0.20 * S.glow);
+        c.fillStyle = alphaCol(mix(BRASS, '#fff2c8', 0.35), 0.85);
+        c.beginPath(); c.arc(p.x, p.y, 0.95 * S.weight, 0, 6.29); c.fill();
+      }
+      c.restore();
     }],
-    ['Braided Filament', function (x) {
-      [0, Math.PI].forEach(function (ph) {
-        x.c.strokeStyle = alphaCol(x.col, 0.75);
-        x.c.lineWidth = 1.05 * x.S.weight;
-        x.c.lineJoin = 'round';
-        x.c.beginPath();
-        for (var d = 0; d <= x.P.len; d += 3) {
-          var p = x.P.at(d);
-          var o = Math.sin(d * 0.11 * x.S.density + x.t * 2.2 * x.S.speed + ph) * 3.1 * x.S.weight;
-          if (d === 0) x.c.moveTo(p.x + p.nx * o, p.y + p.ny * o);
-          else x.c.lineTo(p.x + p.nx * o, p.y + p.ny * o);
+
+    ['Starwake Thread', 'celestial hairline · luminous pearls', function (x) {
+      var c = x.c, S = x.S, col = x.col, t = x.t;
+      strokePts(c, x.P.pts, col, 0.7 * S.weight, 0.32); // the survey line itself
+      var rnd = rngFor(x.seed * 7 + 5);
+      var sp = 26 / S.density;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      for (var d = sp * 0.5; d < x.P.len; d += sp) {
+        var jitter = (rnd() - 0.5) * 8;
+        var ph = rnd() * 6.28;
+        var p = x.P.at(Math.max(0, Math.min(x.P.len, d + jitter)));
+        var breathe = 0.75 + 0.25 * Math.sin(t * 1.25 * S.shimmer + ph);
+        glowDot(c, p.x, p.y, 3.4 * S.weight, col, 0.14 * S.glow * breathe);
+        c.fillStyle = alphaCol(mix(col, PARCH, 0.45), 0.85 * breathe);
+        c.beginPath(); c.arc(p.x, p.y, 1.05 * S.weight, 0, 6.29); c.fill();
+        // the rare lens bloom: a pearl catches the light
+        var tw = Math.pow(Math.max(0, Math.sin(t * 0.29 * S.shimmer + ph * 9)), 14);
+        if (tw > 0.02) {
+          var ray = (4 + 9 * tw) * S.weight;
+          c.strokeStyle = alphaCol(mix(col, '#fff6e0', 0.6), tw * 0.8);
+          c.lineWidth = 0.7;
+          c.beginPath();
+          c.moveTo(p.x - ray, p.y); c.lineTo(p.x + ray, p.y);
+          c.moveTo(p.x, p.y - ray); c.lineTo(p.x, p.y + ray);
+          c.stroke();
+          glowDot(c, p.x, p.y, 6 * tw + 2, col, 0.3 * tw);
         }
-        x.c.stroke();
-      });
-      strokePts(x.c, x.P.pts, x.col, 8 * x.S.weight, 0.05 * x.S.glow);
-    }],
-    ['Standing Wave', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1.4 * x.S.weight, 0.75);
-      x.c.strokeStyle = alphaCol(x.col, 0.35);
-      x.c.lineWidth = 1 * x.S.weight;
-      x.c.beginPath();
-      for (var d = 0; d <= x.P.len; d += 3) {
-        var p = x.P.at(d);
-        var o = Math.sin(d * 0.09 * x.S.density - x.t * 3 * x.S.speed) * 2.6 *
-                Math.sin(Math.PI * d / x.P.len);
-        if (d === 0) x.c.moveTo(p.x + p.nx * o, p.y + p.ny * o);
-        else x.c.lineTo(p.x + p.nx * o, p.y + p.ny * o);
       }
-      x.c.stroke();
-    }],
-    ['Heartbeat Pulse', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1.2 * x.S.weight, 0.22);
-      var head = ((x.t * 0.55 * x.S.speed) % 1) * (x.P.len + 40);
-      for (var i = 0; i < 12; i++) {
-        var d0 = head - i * 3, d1 = head - (i + 1) * 3;
-        if (d1 < 0 || d0 > x.P.len) continue;
-        var f = 1 - i / 12;
-        var a0 = x.P.at(Math.min(d0, x.P.len)), a1 = x.P.at(Math.max(0, d1));
-        x.c.strokeStyle = alphaCol(mix(x.col, PARCH, 0.3 * f), 0.9 * f);
-        x.c.lineWidth = (1 + 1.6 * f) * x.S.weight;
-        x.c.lineCap = 'round';
-        x.c.beginPath(); x.c.moveTo(a0.x, a0.y); x.c.lineTo(a1.x, a1.y); x.c.stroke();
-      }
-      if (head <= x.P.len) {
-        var hp = x.P.at(head);
-        x.c.fillStyle = alphaCol(x.col, 0.2 * x.S.glow);
-        x.c.beginPath(); x.c.arc(hp.x, hp.y, 6 * x.S.weight, 0, 6.29); x.c.fill();
-      }
-    }],
-    ['Slipstream', function (x) {
-      var sway = Math.sin(x.t * 1.3 * x.S.speed) * 0.8;
-      strokePts(x.c, offset(x.P.pts, (2.6 + sway) * x.S.weight), x.col, 1.8 * x.S.weight, 0.16);
-      strokePts(x.c, offset(x.P.pts, (-2.6 + sway) * x.S.weight), x.col, 1.8 * x.S.weight, 0.16);
-      strokePts(x.c, x.P.pts, x.col, 1.9 * x.S.weight, 0.6);
-    }],
-    ['Ink Shadow', function (x) {
-      strokePts(x.c, x.P.pts, INK, 7.5 * x.S.weight, 0.85);
-      strokePts(x.c, x.P.pts, x.col, 1.7 * x.S.weight, 0.95);
-    }],
-    ['Counterflow', function (x) {
-      x.c.save();
-      x.c.setLineDash([8 / x.S.density, 8 / x.S.density]);
-      x.c.lineDashOffset = -x.t * 20 * x.S.speed;
-      strokePts(x.c, offset(x.P.pts, 2.6 * x.S.weight), x.col, 1.2 * x.S.weight, 0.8);
-      x.c.lineDashOffset = x.t * 20 * x.S.speed;
-      strokePts(x.c, offset(x.P.pts, -2.6 * x.S.weight), x.col, 1.2 * x.S.weight, 0.8);
-      x.c.restore();
-    }],
-    ['Waystations', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.3);
-      var sp = 21 / x.S.density, n = Math.floor(x.P.len / sp);
-      for (var i = 0; i <= n; i++) {
-        var p = x.P.at(i * sp), s = 2.6 * x.S.weight;
-        var blink = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(x.t * 2 * x.S.speed - i * 0.9));
-        x.c.save();
-        x.c.translate(p.x, p.y);
-        x.c.rotate(Math.atan2(p.dy, p.dx) + Math.PI / 4);
-        x.c.fillStyle = alphaCol(x.col, blink);
-        x.c.fillRect(-s / 2, -s / 2, s, s);
-        x.c.strokeStyle = alphaCol(PARCH, 0.5);
-        x.c.lineWidth = 0.7;
-        x.c.strokeRect(-s / 2, -s / 2, s, s);
-        x.c.restore();
-      }
-    }],
-    ['Approach Lights', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.08);
-      var sp = 9.5 / x.S.density, n = Math.floor(x.P.len / sp);
-      for (var i = 0; i <= n; i++) {
-        var p = x.P.at(i * sp);
-        var ph = ((i * 0.09 - x.t * 0.9 * x.S.speed) % 1 + 1) % 1;
-        var a = 0.12 + 0.85 * Math.pow(Math.max(0, 1 - ph * 3), 2);
-        x.c.fillStyle = alphaCol(x.col, a);
-        x.c.beginPath(); x.c.arc(p.x, p.y, 1.6 * x.S.weight, 0, 6.29); x.c.fill();
-      }
-    }],
-    ['Tapered Spans', function (x) {
-      var up = [], down = [];
-      for (var d = 0; d <= x.P.len; d += 4) {
-        var p = x.P.at(d);
-        var hw = Math.pow(Math.sin(Math.PI * d / x.P.len), 0.65) * 3.4 * x.S.weight + 0.3;
-        up.push({ x: p.x + p.nx * hw, y: p.y + p.ny * hw });
-        down.push({ x: p.x - p.nx * hw, y: p.y - p.ny * hw });
-      }
-      x.c.fillStyle = alphaCol(x.col, 0.7);
-      x.c.beginPath();
-      x.c.moveTo(up[0].x, up[0].y);
-      up.forEach(function (p) { x.c.lineTo(p.x, p.y); });
-      down.reverse().forEach(function (p) { x.c.lineTo(p.x, p.y); });
-      x.c.closePath();
-      x.c.fill();
-      strokePts(x.c, x.P.pts, x.col, 9 * x.S.weight, 0.05 * x.S.glow);
-    }],
-    ['Anchor Rings', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1.25 * x.S.weight, 0.85);
-      x.P.pts.forEach(function (p) {
-        x.c.strokeStyle = alphaCol(mix(x.col, PARCH, 0.3), 0.9);
-        x.c.lineWidth = 1.2;
-        x.c.beginPath(); x.c.arc(p.x, p.y, 4.4 * x.S.weight, 0, 6.29); x.c.stroke();
-      });
-    }],
-    ['Silk Gradient', function (x) {
-      var p0 = x.P.pts[0], p1 = x.P.pts[x.P.pts.length - 1];
-      var g = x.c.createLinearGradient(p0.x, p0.y, p1.x, p1.y);
-      g.addColorStop(0, alphaCol(x.col, 0.95));
-      g.addColorStop(0.5, alphaCol(mix(x.col, PARCH, 0.55), 0.85));
-      g.addColorStop(1, alphaCol(x.col, 0.95));
-      x.c.strokeStyle = g;
-      x.c.lineWidth = 1.9 * x.S.weight;
-      x.c.lineJoin = 'round'; x.c.lineCap = 'round';
-      trace(x.c, x.P.pts);
-      x.c.stroke();
-    }],
-    ['Star Sparkle', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1.2 * x.S.weight, 0.7);
-      for (var i = 0; i < 4; i++) {
-        var d = x.P.len * (0.14 + 0.24 * i) + Math.sin(i * 5.2) * 8;
-        var p = x.P.at(d);
-        var a = Math.pow(Math.max(0, Math.sin(x.t * 1.5 * x.S.speed + i * 1.8)), 3);
-        var s = 3.6 * x.S.weight * (0.6 + a);
-        x.c.strokeStyle = alphaCol(mix(x.col, PARCH, 0.5), a * 0.95);
-        x.c.lineWidth = 0.9;
-        x.c.beginPath();
-        x.c.moveTo(p.x - s, p.y); x.c.lineTo(p.x + s, p.y);
-        x.c.moveTo(p.x, p.y - s); x.c.lineTo(p.x, p.y + s);
-        x.c.stroke();
-      }
-    }],
-    ['Contrail', function (x) {
-      for (var d = 0; d < x.P.len; d += 6) {
-        var p0 = x.P.at(d), p1 = x.P.at(Math.min(x.P.len, d + 6.5));
-        var n = 0.5 + 0.5 * Math.sin(d * 0.13 + x.t * 0.6 * x.S.speed) *
-                Math.sin(d * 0.031 - x.t * 0.4 * x.S.speed);
-        x.c.strokeStyle = alphaCol(x.col, (0.08 + 0.1 * n) * x.S.glow);
-        x.c.lineWidth = (4 + 5 * n) * x.S.weight;
-        x.c.lineCap = 'butt';
-        x.c.beginPath(); x.c.moveTo(p0.x, p0.y); x.c.lineTo(p1.x, p1.y); x.c.stroke();
-      }
-      strokePts(x.c, x.P.pts, x.col, 1, 0.4);
-    }],
-    ['Morse Signal', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 1, 0.12);
-      x.c.save();
-      x.c.setLineDash([9 / x.S.density, 5 / x.S.density, 2.5 / x.S.density,
-        5 / x.S.density, 2.5 / x.S.density, 12 / x.S.density]);
-      x.c.lineDashOffset = -x.t * 18 * x.S.speed;
-      strokePts(x.c, x.P.pts, x.col, 1.6 * x.S.weight, 0.9);
-      x.c.restore();
-    }],
-    ['Rails & Sleepers', function (x) {
-      strokePts(x.c, x.P.pts, x.col, 10 * x.S.weight, 0.06 * x.S.glow);
-      strokePts(x.c, offset(x.P.pts, 2.4 * x.S.weight), x.col, 1 * x.S.weight, 0.85);
-      strokePts(x.c, offset(x.P.pts, -2.4 * x.S.weight), x.col, 1 * x.S.weight, 0.85);
-      var sp = 8.5 / x.S.density;
-      x.c.strokeStyle = alphaCol(x.col, 0.26);
-      x.c.lineWidth = 0.9;
-      for (var d = sp / 2; d < x.P.len; d += sp) {
-        var p = x.P.at(d), s = 2.9 * x.S.weight;
-        x.c.beginPath();
-        x.c.moveTo(p.x + p.nx * s, p.y + p.ny * s);
-        x.c.lineTo(p.x - p.nx * s, p.y - p.ny * s);
-        x.c.stroke();
-      }
-    }],
-    ['Gilded Edge', function (x) {
-      strokePts(x.c, offset(x.P.pts, 1.3), INK, 2.4 * x.S.weight, 0.8);
-      strokePts(x.c, x.P.pts, x.col, 2.2 * x.S.weight, 0.95);
-      strokePts(x.c, offset(x.P.pts, -0.8 * x.S.weight), mix(x.col, PARCH, 0.55), 0.7, 0.85);
+      c.restore();
     }],
   ];
 
+  // a small vessel under way, drawn softly enough to sit in the scene
+  function serviceVessel(c, p, dir, col, t, ph) {
+    var ang = Math.atan2(p.dy * dir, p.dx * dir);
+    c.save();
+    c.translate(p.x, p.y);
+    c.rotate(ang);
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    glowDot(c, -9, 0, 5, WARM, 0.28 + 0.1 * Math.sin(t * 13 + ph)); // engine
+    c.restore();
+    c.shadowColor = 'rgba(0,0,0,0.5)';
+    c.shadowBlur = 3;
+    c.shadowOffsetY = 2;
+    var g = c.createLinearGradient(-8, -3, 8, 3);
+    g.addColorStop(0, mix(mix(col, '#48505e', 0.55), '#dfe8f2', 0.25));
+    g.addColorStop(1, mix(mix(col, '#48505e', 0.55), '#05070b', 0.4));
+    c.fillStyle = g;
+    c.beginPath();
+    c.moveTo(9, 0);
+    c.quadraticCurveTo(2, -3.2, -7.5, -1.6);
+    c.quadraticCurveTo(-9.5, 0, -7.5, 1.6);
+    c.quadraticCurveTo(2, 3.2, 9, 0);
+    c.closePath();
+    c.fill();
+    c.shadowColor = 'transparent';
+    c.strokeStyle = alphaCol(BRASS, 0.4);
+    c.lineWidth = 0.6;
+    c.stroke();
+    c.fillStyle = alphaCol(WARM, 0.9);
+    c.beginPath(); c.arc(5.5, 0, 0.9, 0, 6.29); c.fill();
+    c.restore();
+  }
+
   function buildCorridorPlate() {
     var grid = document.getElementById('grid-cor');
-    var W = 340, H = 150;
+    var W = 760, H = 210;
     CORRIDORS.forEach(function (def, i) {
-      var rnd0 = rngFor(100 + i);
-      var stars = [];
-      for (var s = 0; s < 42; s++) stars.push([rnd0() * W, rnd0() * H, 0.4 + rnd0(), 0.05 + rnd0() * 0.25]);
-      var pA = { x: 32, y: 105, r: 12 }, pB = { x: 310, y: 86, r: 9 }, bend = { x: 172, y: 42 };
-      function trim(p, toward, by) {
-        var dx = toward.x - p.x, dy = toward.y - p.y, l = Math.sqrt(dx * dx + dy * dy);
-        return { x: p.x + dx / l * by, y: p.y + dy / l * by };
-      }
-      var P = makePath([trim(pA, bend, pA.r + 5), bend, trim(pB, bend, pB.r + 5)]);
+      var seed = 100 + i;
+      var rnd0 = rngFor(seed);
+      var stars = makeStars(rnd0, 80, W, H);
+      var blobs = [
+        [W * (0.28 + rnd0() * 0.2), H * 0.28, 80 + rnd0() * 30, 268],
+        [W * (0.62 + rnd0() * 0.2), H * 0.8, 70 + rnd0() * 30, 322],
+      ];
+      var pA = { x: 58, y: 155, r: 17 }, pB = { x: 702, y: 118, r: 13 };
+      var P = makeCurve({ x: 82, y: 147 }, { x: 390, y: 42 }, { x: 682, y: 116 }, 70);
 
-      addCard(grid, 'cor', i, i + 1, def[0], null, W, H, function (c, w, h, t) {
+      addCard(grid, 'cor', i, i + 1, def[0], def[1], W, H, function (c, w, h, t) {
         c.fillStyle = INK; c.fillRect(0, 0, w, h);
-        stars.forEach(function (st) {
-          c.fillStyle = alphaCol(TH.starColour, st[3]);
-          c.fillRect(st[0], st[1], st[2], st[2]);
-        });
-        var col = colFor(corS, i);
+        drawStars(c, stars, t);
+        nebulaWash(c, blobs, t, 0.55);
         c.save();
         c.globalAlpha = corS.alpha;
-        def[1]({ c: c, P: P, col: col, t: t, S: corS, rnd: rnd0 });
+        def[2]({ c: c, P: P, col: colFor(corS, i), t: t, S: corS, seed: seed });
         c.restore();
-        paintPlanet(c, pA.x, pA.y, pA.r, TINTS[i % 8], 100 + i, 'water');
-        paintPlanet(c, pB.x, pB.y, pB.r, TINTS[(i + 3) % 8], 200 + i, 'energy');
-        // a vessel in service, so traffic legibility can be judged
-        var period = 2 * P.len / 24;
-        var ph = (t % period) / period * 2;
-        var dir = ph < 1 ? 1 : -1;
-        var d = (ph < 1 ? ph : 2 - ph) * P.len;
-        var p = P.at(d);
-        c.save();
-        c.translate(p.x, p.y);
-        c.rotate(Math.atan2(p.dy * dir, p.dx * dir));
-        c.fillStyle = dark(0.7);
-        c.beginPath(); c.moveTo(8, 0); c.lineTo(-6, -3.4); c.lineTo(-4, 0); c.lineTo(-6, 3.4); c.closePath(); c.fill();
-        c.fillStyle = col;
-        c.beginPath(); c.moveTo(7, 0); c.lineTo(-5, -2.8); c.lineTo(-3.4, 0); c.lineTo(-5, 2.8); c.closePath(); c.fill();
-        c.strokeStyle = alphaCol(PARCH, 0.8); c.lineWidth = 0.7; c.stroke();
-        c.restore();
+        paintPlanet(c, pA.x, pA.y, pA.r, TINTS[i % 8], seed, 'water');
+        paintPlanet(c, pB.x, pB.y, pB.r, TINTS[(i + 3) % 8], seed + 7, 'energy');
+        // two vessels in service, one each way — the channel works both directions
+        var col = colFor(corS, i);
+        var dOut = (t * 17 + i * 60) % P.len;
+        var dHome = P.len - ((t * 14 + i * 130 + 90) % P.len);
+        var pOut = P.at(dOut), pHome = P.at(dHome);
+        serviceVessel(c, { x: pOut.x + pOut.nx * 3.4, y: pOut.y + pOut.ny * 3.4, dx: pOut.dx, dy: pOut.dy }, 1, col, t, i);
+        serviceVessel(c, { x: pHome.x - pHome.nx * 3.4, y: pHome.y - pHome.ny * 3.4, dx: pHome.dx, dy: pHome.dy }, -1, col, t, i + 3);
+        vignette(c, w, h);
       });
     });
   }
 
   // ================================================================
-  // PLATE II — vessels & pods
+  // PLATE II — three vessels
   // ================================================================
-  var shipS = { scale: 1, orbit: 1, pace: 1, crate: 1, ring: 0.4, livery: 0.5, exhaust: 1, colour: -1 };
-
-  /* Hull painters: draw at origin, bow toward +x. (c, L, W, hull, acc) */
-  function hullFinish(c, build, fill) {
-    c.save(); c.translate(1.2, 2.2);
-    c.beginPath(); build(c); c.fillStyle = dark(0.45); c.fill();
-    c.restore();
-    c.beginPath(); build(c); c.fillStyle = fill; c.fill();
-    c.strokeStyle = alphaCol(PARCH, 0.75); c.lineWidth = 0.9;
-    c.beginPath(); build(c); c.stroke();
-  }
-  var HULLS = [
-    ['Clipper', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        c.moveTo(L / 2, 0);
-        c.quadraticCurveTo(L * 0.08, -W * 0.66, -L / 2, -W * 0.16);
-        c.lineTo(-L / 2, W * 0.16);
-        c.quadraticCurveTo(L * 0.08, W * 0.66, L / 2, 0);
-      }, hull);
-      c.strokeStyle = alphaCol(PARCH, 0.3); c.lineWidth = 0.8;
-      c.beginPath(); c.moveTo(L * 0.42, 0); c.lineTo(-L * 0.46, 0); c.stroke();
-      c.fillStyle = acc;
-      c.beginPath(); c.arc(L * 0.2, 0, W * 0.13, 0, 6.29); c.fill();
-    }],
-    ['Packet', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        c.moveTo(L / 2 + 4, 0);
-        c.lineTo(L / 2 - 3, -W * 0.34); c.lineTo(L * 0.16, -W * 0.5);
-        c.lineTo(-L / 2 + 3, -W * 0.5); c.lineTo(-L / 2, -W * 0.3);
-        c.lineTo(-L / 2, W * 0.3); c.lineTo(-L / 2 + 3, W * 0.5);
-        c.lineTo(L * 0.16, W * 0.5); c.lineTo(L / 2 - 3, W * 0.34);
-        c.closePath();
-      }, hull);
-      c.fillStyle = mix(hull, INK, 0.4);
-      rrect(c, -L / 2 - 0.5, -W * 0.3, 3.2, W * 0.6, 1); c.fill();
-      c.fillStyle = alphaCol(acc, 0.9);
-      c.beginPath(); c.arc(L / 2 - 1, 0, 1.6, 0, 6.29); c.fill();
-    }],
-    ['Dart', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        c.moveTo(L / 2, 0);
-        c.lineTo(-L / 2, -W * 0.58); c.lineTo(-L * 0.28, 0); c.lineTo(-L / 2, W * 0.58);
-        c.closePath();
-      }, hull);
-      c.strokeStyle = alphaCol(acc, 0.85); c.lineWidth = 1.1;
-      c.beginPath(); c.moveTo(L * 0.3, 0); c.lineTo(-L * 0.2, 0); c.stroke();
-    }],
-    ['Whale-back', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        c.moveTo(L / 2, 0);
-        c.bezierCurveTo(L * 0.42, -W * 0.72, -L * 0.05, -W * 0.6, -L * 0.36, -W * 0.14);
-        c.lineTo(-L / 2, -W * 0.4);
-        c.lineTo(-L * 0.42, 0);
-        c.lineTo(-L / 2, W * 0.4);
-        c.lineTo(-L * 0.36, W * 0.14);
-        c.bezierCurveTo(-L * 0.05, W * 0.6, L * 0.42, W * 0.72, L / 2, 0);
-      }, hull);
-      c.fillStyle = alphaCol(acc, 0.8);
-      c.beginPath(); c.arc(L * 0.26, 0, W * 0.11, 0, 6.29); c.fill();
-    }],
-    ['Dirigible', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        c.ellipse(0, 0, L / 2, W * 0.5, 0, 0, 6.29);
-      }, hull);
-      [-1, 1].forEach(function (s) {
-        c.fillStyle = mix(hull, INK, 0.35);
-        c.beginPath();
-        c.moveTo(-L * 0.34, s * W * 0.32);
-        c.lineTo(-L * 0.58, s * W * 0.72);
-        c.lineTo(-L * 0.46, s * W * 0.22);
-        c.closePath(); c.fill();
-      });
-      c.strokeStyle = alphaCol(PARCH, 0.35); c.lineWidth = 0.7;
-      for (var i = -2; i <= 2; i++) {
-        var xx = i * L * 0.16;
-        var yy = W * 0.5 * Math.sqrt(Math.max(0, 1 - (xx / (L / 2)) * (xx / (L / 2))));
-        c.beginPath(); c.moveTo(xx, -yy); c.lineTo(xx, yy); c.stroke();
-      }
-      c.fillStyle = acc;
-      rrect(c, -L * 0.14, -W * 0.1, L * 0.28, W * 0.2, 2); c.fill();
-    }],
-    ['Catamaran', function (c, L, W, hull, acc) {
-      c.fillStyle = mix(hull, INK, 0.3);
-      rrect(c, -L * 0.18, -W * 0.62, L * 0.36, W * 1.24, 2.5); c.fill();
-      c.strokeStyle = alphaCol(PARCH, 0.5); c.lineWidth = 0.8;
-      rrect(c, -L * 0.18, -W * 0.62, L * 0.36, W * 1.24, 2.5); c.stroke();
-      [-1, 1].forEach(function (s) {
-        hullFinish(c, function () {
-          c.moveTo(L * 0.46, s * W * 0.55);
-          c.quadraticCurveTo(L * 0.05, s * W * 0.87, -L * 0.44, s * W * 0.62);
-          c.quadraticCurveTo(L * 0.05, s * W * 0.35, L * 0.46, s * W * 0.55);
-        }, hull);
-      });
-      c.fillStyle = acc;
-      c.beginPath(); c.arc(0, 0, W * 0.14, 0, 6.29); c.fill();
-    }],
-    ['Annulus', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        rrect(c, -L / 2, -W * 0.14, L, W * 0.28, W * 0.14);
-      }, hull);
-      c.save(); c.translate(1.2, 2.2);
-      c.strokeStyle = dark(0.45); c.lineWidth = W * 0.3;
-      c.beginPath(); c.arc(0, 0, W * 0.85, 0, 6.29); c.stroke();
-      c.restore();
-      c.strokeStyle = hull; c.lineWidth = W * 0.3;
-      c.beginPath(); c.arc(0, 0, W * 0.85, 0, 6.29); c.stroke();
-      c.strokeStyle = alphaCol(PARCH, 0.7); c.lineWidth = 0.8;
-      c.beginPath(); c.arc(0, 0, W * 0.85 + W * 0.15, 0, 6.29); c.stroke();
-      c.beginPath(); c.arc(0, 0, W * 0.85 - W * 0.15, 0, 6.29); c.stroke();
-      c.fillStyle = acc;
-      c.beginPath(); c.arc(L / 2 - W * 0.12, 0, W * 0.12, 0, 6.29); c.fill();
-    }],
-    ['Manta', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        c.moveTo(L / 2, 0);
-        c.quadraticCurveTo(L * 0.05, -W * 1.0, -L * 0.42, -W * 0.62);
-        c.quadraticCurveTo(-L * 0.18, -W * 0.18, -L * 0.34, 0);
-        c.quadraticCurveTo(-L * 0.18, W * 0.18, -L * 0.42, W * 0.62);
-        c.quadraticCurveTo(L * 0.05, W * 1.0, L / 2, 0);
-      }, hull);
-      c.strokeStyle = alphaCol(acc, 0.75); c.lineWidth = 1;
-      c.beginPath();
-      c.moveTo(L * 0.34, 0);
-      c.quadraticCurveTo(-L * 0.05, -W * 0.4, -L * 0.3, -W * 0.5);
-      c.moveTo(L * 0.34, 0);
-      c.quadraticCurveTo(-L * 0.05, W * 0.4, -L * 0.3, W * 0.5);
-      c.stroke();
-    }],
-    ['Longliner', function (c, L, W, hull, acc) {
-      var LL = L * 1.18;
-      hullFinish(c, function () {
-        c.moveTo(LL / 2 + 5, 0);
-        c.lineTo(LL / 2 - 4, -W * 0.3);
-        c.lineTo(-LL / 2 + 2, -W * 0.3);
-        c.lineTo(-LL / 2, 0);
-        c.lineTo(-LL / 2 + 2, W * 0.3);
-        c.lineTo(LL / 2 - 4, W * 0.3);
-        c.closePath();
-      }, hull);
-      c.strokeStyle = alphaCol(PARCH, 0.28); c.lineWidth = 0.7;
-      for (var i = 1; i <= 4; i++) {
-        var xx = LL / 2 - 4 - i * LL * 0.19;
-        c.beginPath(); c.moveTo(xx, -W * 0.3); c.lineTo(xx, W * 0.3); c.stroke();
-      }
-      c.fillStyle = acc;
-      c.beginPath(); c.arc(LL * 0.36, 0, W * 0.12, 0, 6.29); c.fill();
-    }],
-    ['Harbour Tug', function (c, L, W, hull, acc) {
-      hullFinish(c, function () {
-        c.moveTo(L * 0.22, -W * 0.55);
-        c.arc(L * 0.22, 0, W * 0.55, -Math.PI / 2, Math.PI / 2);
-        c.lineTo(-L / 2 + 2, W * 0.38);
-        c.lineTo(-L / 2, 0);
-        c.lineTo(-L / 2 + 2, -W * 0.38);
-        c.closePath();
-      }, hull);
-      c.save();
-      c.setLineDash([2.5, 2.5]);
-      c.strokeStyle = alphaCol(PARCH, 0.55); c.lineWidth = 1.6;
-      c.beginPath(); c.arc(L * 0.22, 0, W * 0.55 + 1.4, -Math.PI / 2, Math.PI / 2); c.stroke();
-      c.restore();
-      c.fillStyle = mix(hull, INK, 0.4);
-      rrect(c, -L * 0.42, -W * 0.28, L * 0.2, W * 0.56, 1.5); c.fill();
-      c.fillStyle = acc;
-      c.beginPath(); c.arc(L * 0.22, 0, W * 0.13, 0, 6.29); c.fill();
-    }],
-  ];
-  var LADINGS = ['carousel lading', 'halo lading', 'stern-ring lading'];
+  var shipS = { scale: 1, orbit: 1, pace: 1, crate: 1, ring: 0.35, livery: 0.45, exhaust: 1, colour: -1 };
   var SHIP_CARGO = ['water', 'minerals', 'machinery', 'medicine', 'energy'];
   var POD_CARGO = ['food', 'luxuries', 'biology'];
 
-  function orbitPositions(style, n, cx, cy, L, R, t, pace) {
+  function hullTone(col) { return mix('#454e5c', col, shipS.livery); }
+  function litGrad(c, base, x0, y0, x1, y1) {
+    var g = c.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, mix(base, '#dfe8f2', 0.30));
+    g.addColorStop(0.5, base);
+    g.addColorStop(1, mix(base, '#05070b', 0.45));
+    return g;
+  }
+  function deckLamps(c, xs, y, t) {
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    xs.forEach(function (lx, i) {
+      var a = 0.55 + 0.2 * Math.sin(t * 2 + i * 1.9);
+      glowDot(c, lx, y, 2.6, WARM, a * 0.35);
+      c.fillStyle = alphaCol('#fff3d6', a);
+      c.fillRect(lx - 0.6, y - 0.6, 1.2, 1.2);
+    });
+    c.restore();
+  }
+  function dome(c, x, y, r) { // a small glass observatory, lit from within
+    var g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+    g.addColorStop(0, alphaCol('#eef4ff', 0.85));
+    g.addColorStop(0.6, alphaCol('#9fb4d0', 0.55));
+    g.addColorStop(1, alphaCol('#3a4658', 0.85));
+    c.fillStyle = g;
+    c.beginPath(); c.arc(x, y, r, 0, 6.29); c.fill();
+    c.strokeStyle = alphaCol(BRASS, 0.6);
+    c.lineWidth = 0.8;
+    c.beginPath(); c.arc(x, y, r, 0, 6.29); c.stroke();
+    c.beginPath(); c.arc(x, y, r, -Math.PI * 0.9, Math.PI * 0.1); c.stroke();
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    glowDot(c, x, y, r * 2.2, WARM, 0.12);
+    c.restore();
+  }
+  function engineGlow(c, x, y, t, strength, col) {
+    if (strength <= 0) return;
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    var f = 0.8 + 0.2 * Math.sin(t * 17) * Math.sin(t * 7.3);
+    glowDot(c, x, y, 9 * strength, WARM, 0.30 * strength * f);
+    glowDot(c, x - 7 * strength, y, 16 * strength, mix(col, WARM, 0.5), 0.10 * strength * f);
+    c.fillStyle = alphaCol('#fff3d6', 0.85 * f);
+    c.beginPath(); c.arc(x, y, 1.4, 0, 6.29); c.fill();
+    c.restore();
+  }
+
+  /* Vessel painters: origin amidships, bow toward +x, L×W the envelope. */
+  var SHIPS = [
+    ['Clipper', 'long exploration steamer', function (c, L, W, col, t) {
+      var base = hullTone(col);
+      engineGlow(c, -L * 0.52, 0, t, shipS.exhaust, col);
+      function hull() {
+        c.beginPath();
+        c.moveTo(L * 0.55, 0);                                   // raked bow
+        c.bezierCurveTo(L * 0.28, -W * 0.34, -L * 0.18, -W * 0.30, -L * 0.44, -W * 0.16);
+        c.quadraticCurveTo(-L * 0.53, 0, -L * 0.44, W * 0.16);   // rounded counter stern
+        c.bezierCurveTo(-L * 0.18, W * 0.30, L * 0.28, W * 0.34, L * 0.55, 0);
+        c.closePath();
+      }
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,0.55)';
+      c.shadowBlur = 9;
+      c.shadowOffsetX = 2; c.shadowOffsetY = 5;
+      c.fillStyle = litGrad(c, base, -L * 0.2, -W * 0.5, L * 0.2, W * 0.5);
+      hull(); c.fill();
+      c.restore();
+      c.strokeStyle = alphaCol(BRASS, 0.45);                     // brass gunwale
+      c.lineWidth = 0.9;
+      hull(); c.stroke();
+      // skylight spine glowing gently down the centreline
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      var sg = c.createLinearGradient(-L * 0.4, 0, L * 0.42, 0);
+      sg.addColorStop(0, alphaCol(WARM, 0));
+      sg.addColorStop(0.5, alphaCol(WARM, 0.30));
+      sg.addColorStop(1, alphaCol(WARM, 0));
+      c.strokeStyle = sg;
+      c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(-L * 0.4, 0); c.lineTo(L * 0.42, 0); c.stroke();
+      c.restore();
+      // deck lamps along both rails
+      var xs = [];
+      for (var i = 0; i < 5; i++) xs.push(-L * 0.3 + i * L * 0.16);
+      deckLamps(c, xs, -W * 0.18, t);
+      deckLamps(c, xs, W * 0.18, t + 0.7);
+      dome(c, -L * 0.12, -W * 0.04, W * 0.15);                   // chart-room dome, a touch off-centre
+      c.fillStyle = alphaCol(PARCH, 0.75);                       // bow light
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, L * 0.5, 0, 4, col, 0.35);
+      c.restore();
+      c.beginPath(); c.arc(L * 0.5, 0, 1.1, 0, 6.29); c.fill();
+    }],
+
+    ['Packet', 'chunky workhorse freighter', function (c, L, W, col, t) {
+      var base = hullTone(col);
+      engineGlow(c, -L * 0.46, -W * 0.14, t, shipS.exhaust * 0.8, col);
+      engineGlow(c, -L * 0.46, W * 0.14, t + 0.4, shipS.exhaust * 0.8, col);
+      function hull() {
+        c.beginPath();
+        c.moveTo(L * 0.30, -W * 0.40);
+        c.quadraticCurveTo(L * 0.52, -W * 0.34, L * 0.52, 0);    // bluff bow
+        c.quadraticCurveTo(L * 0.52, W * 0.34, L * 0.30, W * 0.40);
+        c.lineTo(-L * 0.38, W * 0.40);
+        c.quadraticCurveTo(-L * 0.46, W * 0.36, -L * 0.46, 0);
+        c.quadraticCurveTo(-L * 0.46, -W * 0.36, -L * 0.38, -W * 0.40);
+        c.closePath();
+      }
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,0.55)';
+      c.shadowBlur = 9;
+      c.shadowOffsetX = 2; c.shadowOffsetY = 5;
+      c.fillStyle = litGrad(c, base, -L * 0.15, -W * 0.55, L * 0.15, W * 0.55);
+      hull(); c.fill();
+      c.restore();
+      c.strokeStyle = alphaCol(BRASS, 0.4);
+      c.lineWidth = 0.9;
+      hull(); c.stroke();
+      // rubbing strakes along the sides
+      c.strokeStyle = alphaCol(mix(base, '#05070b', 0.4), 0.8);
+      c.lineWidth = 1.3;
+      [-0.31, 0.31].forEach(function (yy) {
+        c.beginPath();
+        c.moveTo(L * 0.36, W * yy);
+        c.lineTo(-L * 0.4, W * yy);
+        c.stroke();
+      });
+      // recessed hold with two hatches
+      c.fillStyle = dark(0.42);
+      rrect(c, -L * 0.28, -W * 0.22, L * 0.5, W * 0.44, 2.5); c.fill();
+      c.strokeStyle = alphaCol(PARCH, 0.2);
+      c.lineWidth = 0.7;
+      [-L * 0.24, 0].forEach(function (hx) {
+        rrect(c, hx, -W * 0.16, L * 0.2, W * 0.32, 1.6); c.stroke();
+      });
+      // engine house astern
+      c.fillStyle = mix(base, '#05070b', 0.3);
+      rrect(c, -L * 0.44, -W * 0.24, L * 0.13, W * 0.48, 2); c.fill();
+      c.strokeStyle = alphaCol(BRASS, 0.3);
+      rrect(c, -L * 0.44, -W * 0.24, L * 0.13, W * 0.48, 2); c.stroke();
+      // foremast with a working lamp
+      c.strokeStyle = alphaCol(PARCH, 0.45);
+      c.lineWidth = 0.9;
+      c.beginPath(); c.moveTo(L * 0.36, 0); c.lineTo(L * 0.44, 0); c.stroke();
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, L * 0.44, 0, 3.5, WARM, 0.4 + 0.15 * Math.sin(t * 1.7));
+      c.restore();
+      deckLamps(c, [-L * 0.33, L * 0.3], 0, t);
+    }],
+
+    ['Pilgrim', 'asymmetric survey vessel', function (c, L, W, col, t) {
+      var base = hullTone(col);
+      engineGlow(c, -L * 0.5, W * 0.06, t, shipS.exhaust, col);
+      function hull() { // fuller to port, leaner to starboard: built around the observatory
+        c.beginPath();
+        c.moveTo(L * 0.54, W * 0.02);
+        c.bezierCurveTo(L * 0.26, -W * 0.40, -L * 0.14, -W * 0.42, -L * 0.40, -W * 0.18);
+        c.quadraticCurveTo(-L * 0.5, W * 0.0, -L * 0.4, W * 0.14);
+        c.bezierCurveTo(-L * 0.12, W * 0.27, L * 0.26, W * 0.20, L * 0.54, W * 0.02);
+        c.closePath();
+      }
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,0.55)';
+      c.shadowBlur = 9;
+      c.shadowOffsetX = 2; c.shadowOffsetY = 5;
+      c.fillStyle = litGrad(c, base, -L * 0.2, -W * 0.5, L * 0.2, W * 0.5);
+      hull(); c.fill();
+      c.restore();
+      c.strokeStyle = alphaCol(BRASS, 0.45);
+      c.lineWidth = 0.9;
+      hull(); c.stroke();
+      // the observatory itself, set to port
+      dome(c, -L * 0.06, -W * 0.13, W * 0.21);
+      // meridian ring around the dome
+      c.strokeStyle = alphaCol(BRASS, 0.5);
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.ellipse(-L * 0.06, -W * 0.13, W * 0.3, W * 0.1, -0.4, 0, 6.29);
+      c.stroke();
+      // instrument boom to starboard with its sounding pod
+      var bx = L * 0.1, by = W * 0.24, px = L * 0.2, py = W * 0.55;
+      c.strokeStyle = alphaCol(BRASS, 0.6);
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(bx, by); c.lineTo(px, py); c.stroke();
+      c.fillStyle = litGrad(c, mix(base, '#05070b', 0.15), px - 3, py - 3, px + 3, py + 3);
+      c.beginPath(); c.arc(px, py, W * 0.095, 0, 6.29); c.fill();
+      c.strokeStyle = alphaCol(BRASS, 0.5);
+      c.lineWidth = 0.7;
+      c.beginPath(); c.arc(px, py, W * 0.095, 0, 6.29); c.stroke();
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, px, py, 3, col, 0.35 + 0.25 * Math.sin(t * 2.6));
+      c.restore();
+      // survey lamp at the bow, in the corridor's colour
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, L * 0.5, W * 0.02, 5, col, 0.4);
+      c.restore();
+      c.fillStyle = alphaCol(PARCH, 0.8);
+      c.beginPath(); c.arc(L * 0.5, W * 0.02, 1.1, 0, 6.29); c.fill();
+      deckLamps(c, [-L * 0.3, -L * 0.05, L * 0.24], W * 0.1, t);
+    }],
+  ];
+
+  function orbitPositions(n, cx, cy, R, t, pace, ph0) {
     var out = [];
     for (var i = 0; i < n; i++) {
-      var ph = t * 0.9 * pace + i * Math.PI * 2 / n;
-      var p;
-      if (style === 0) {        // carousel: equatorial ellipse about the hull
-        p = { x: cx + Math.cos(ph) * R, y: cy + Math.sin(ph) * R * 0.36,
-              depth: Math.sin(ph), scale: 0.82 + 0.24 * Math.max(0, Math.sin(ph)) };
-      } else if (style === 1) { // halo: a flat ring in the plane of travel
-        p = { x: cx + Math.cos(ph) * R * 0.8, y: cy + Math.sin(ph) * R * 0.8,
-              depth: 1, scale: 1 };
-      } else {                  // stern ring: consignments follow astern
-        p = { x: cx - L * 0.62 + Math.cos(ph) * R * 0.55, y: cy + Math.sin(ph) * R * 0.34,
-              depth: Math.sin(ph), scale: 0.8 + 0.22 * Math.max(0, Math.sin(ph)) };
-      }
-      out.push(p);
+      var ph = t * 0.8 * pace + ph0 + i * Math.PI * 2 / n;
+      out.push({
+        x: cx + Math.cos(ph) * R, y: cy + Math.sin(ph) * R * 0.34,
+        depth: Math.sin(ph), scale: 0.82 + 0.24 * Math.max(0, Math.sin(ph)),
+      });
     }
     return out;
   }
-  function orbitRing(c, style, cx, cy, L, R, col) {
+  function orbitRing(c, cx, cy, R, col) {
     if (shipS.ring <= 0.02) return;
     c.save();
-    c.setLineDash([2.5, 3.5]);
-    c.strokeStyle = alphaCol(col, 0.4 * shipS.ring);
+    c.setLineDash([2, 4.5]);
+    c.strokeStyle = alphaCol(col, 0.35 * shipS.ring);
     c.lineWidth = 0.8;
     c.beginPath();
-    if (style === 0) c.ellipse(cx, cy, R, R * 0.36, 0, 0, 6.29);
-    else if (style === 1) c.arc(cx, cy, R * 0.8, 0, 6.29);
-    else c.ellipse(cx - L * 0.62, cy, R * 0.55, R * 0.34, 0, 0, 6.29);
+    c.ellipse(cx, cy, R, R * 0.34, 0, 0, 6.29);
     c.stroke();
     c.restore();
   }
 
   function buildShipPlate() {
     var grid = document.getElementById('grid-ship');
-    var W = 340, H = 180;
-    for (var no = 0; no < 30; no++) {
-      (function (no) {
-        var hullIdx = Math.floor(no / 3), style = no % 3;
-        var hull = HULLS[hullIdx];
-        var rnd0 = rngFor(500 + no);
-        var stars = [];
-        for (var s = 0; s < 40; s++) stars.push([rnd0() * W, rnd0() * H, 0.4 + rnd0(), 0.05 + rnd0() * 0.25]);
+    var W = 420, H = 235;
+    SHIPS.forEach(function (def, i) {
+      var seed = 500 + i;
+      var rnd0 = rngFor(seed);
+      var stars = makeStars(rnd0, 55, W, H);
+      var blobs = [[W * (0.15 + rnd0() * 0.6), H * (rnd0() < 0.5 ? 0.15 : 0.9), 70 + rnd0() * 30, rnd0() < 0.5 ? 268 : 322]];
 
-        addCard(grid, 'ship', no, no + 1, hull[0], LADINGS[style], W, H, function (c, w, h, t) {
-          c.fillStyle = INK; c.fillRect(0, 0, w, h);
-          stars.forEach(function (st) {
-            c.fillStyle = alphaCol(TH.starColour, st[3]);
-            c.fillRect(st[0], st[1], st[2], st[2]);
-          });
-          var col = colFor(shipS, no);
-          var cy = h * 0.52;
-          c.strokeStyle = alphaCol(col, 0.14); // the corridor it serves, faintly
-          c.lineWidth = 1;
-          c.beginPath(); c.moveTo(0, cy); c.lineTo(w, cy); c.stroke();
-
-          var sc = shipS.scale;
-          var L = 62 * sc, Wd = 19 * sc;
-          var R = 30 * sc * shipS.orbit;
-          var span = w + 240;
-          var cx = -120 + ((t * 26 + no * 53) % span); // desynchronised per specimen
-          var steel = mix('#3d4654', PARCH, 0.08);
-          var hullCol = mix(steel, col, shipS.livery);
-
-          // pod barge astern, with its own small orbit
-          var podX = cx - (L * 0.95 + (style === 2 ? R * 0.9 : 0) + 40 * sc);
-          var podL = L * 0.42, podR = R * 0.5;
-          c.strokeStyle = alphaCol(col, 0.55); // tether
-          c.lineWidth = 1;
-          c.beginPath();
-          c.moveTo(cx - L * 0.5, cy);
-          c.quadraticCurveTo((cx - L * 0.5 + podX) / 2, cy + 3.5, podX + podL * 0.5, cy);
-          c.stroke();
-          var podOrbit = orbitPositions(style, 3, podX, cy, podL, podR, t * 1.25 + 2, shipS.pace);
-          orbitRing(c, style, podX, cy, podL, podR, col);
-          podOrbit.forEach(function (p, i) {
-            if (p.depth < 0) chip(c, p.x, p.y, 6.4 * shipS.crate * p.scale, POD_CARGO[i], 0.6);
-          });
-          c.save();
-          c.translate(podX, cy);
-          hull[1](c, podL, Wd * 0.5, hullCol, col);
-          c.restore();
-          podOrbit.forEach(function (p, i) {
-            if (p.depth >= 0) chip(c, p.x, p.y, 6.4 * shipS.crate * p.scale, POD_CARGO[i], 0.95);
-          });
-
-          // exhaust & engine trail
-          if (shipS.exhaust > 0) {
-            var lick = (6 + 3 * Math.sin(t * 19)) * shipS.exhaust * sc;
-            c.fillStyle = 'rgba(255,214,140,' + Math.min(1, 0.45 * shipS.exhaust) + ')';
-            c.beginPath();
-            c.moveTo(cx - L * 0.5, cy - 1.7 * sc);
-            c.lineTo(cx - L * 0.5 - lick, cy);
-            c.lineTo(cx - L * 0.5, cy + 1.7 * sc);
-            c.closePath(); c.fill();
-          }
-
-          // the vessel with its lading in open orbit
-          var pos = orbitPositions(style, 5, cx, cy, L, R, t, shipS.pace);
-          orbitRing(c, style, cx, cy, L, R, col);
-          pos.forEach(function (p, i) {
-            if (p.depth < 0) chip(c, p.x, p.y, 8.2 * shipS.crate * p.scale, SHIP_CARGO[i], 0.6);
-          });
-          c.save();
-          c.translate(cx, cy);
-          hull[1](c, L, Wd, hullCol, col);
-          c.restore();
-          pos.forEach(function (p, i) {
-            if (p.depth >= 0) chip(c, p.x, p.y, 8.2 * shipS.crate * p.scale, SHIP_CARGO[i], 0.95);
-          });
-        });
-      })(no);
-    }
-  }
-
-  // ================================================================
-  // PLATE III — relay beacons
-  // ================================================================
-  var relS = { scale: 1, rate: 1, bright: 1, nebula: 1, colour: -1 };
-
-  /* Each pattern draws at the origin. y = { c, r, col, t, S } where r is
-     the base radius (~13 × scale) and t is already rate-adjusted. */
-  function lamp(c, x, y, r, col, a, glow) {
-    if (glow) {
-      c.fillStyle = alphaCol(col, 0.16 * a * relS.bright);
-      c.beginPath(); c.arc(x, y, r * 3, 0, 6.29); c.fill();
-    }
-    c.fillStyle = alphaCol(col, Math.min(1, a * relS.bright));
-    c.beginPath(); c.arc(x, y, r, 0, 6.29); c.fill();
-  }
-  var RELAYS = [
-    ['Pylon Mk I', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.8;
-      c.beginPath();
-      c.moveTo(0, -r * 0.75); c.lineTo(r * 0.55, 0); c.lineTo(0, r * 0.75); c.lineTo(-r * 0.55, 0);
-      c.closePath(); c.stroke();
-      lamp(c, 0, 0, 2.6, y.col, 0.35 + 0.65 * (Math.sin(y.t * 3) > 0 ? 1 : 0.15), true);
-      var ph = (y.t * 0.7) % 1;
-      c.strokeStyle = alphaCol(y.col, (1 - ph) * 0.4 * relS.bright);
-      c.lineWidth = 1.2;
-      c.beginPath(); c.arc(0, 0, r * 0.6 + ph * r * 1.3, 0, 6.29); c.stroke();
-    }],
-    ['Pharos', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.5;
-      c.beginPath();
-      c.moveTo(-r * 0.3, r * 0.8); c.lineTo(-r * 0.14, -r * 0.55);
-      c.lineTo(r * 0.14, -r * 0.55); c.lineTo(r * 0.3, r * 0.8);
-      c.closePath(); c.stroke();
-      c.beginPath(); c.moveTo(-r * 0.34, r * 0.8); c.lineTo(r * 0.34, r * 0.8); c.stroke();
-      var a = y.t * 1.1;
-      [0, Math.PI].forEach(function (o) {
-        var g = c.createLinearGradient(0, 0, Math.cos(a + o) * r * 2.6, Math.sin(a + o) * r * 2.6);
-        g.addColorStop(0, alphaCol(y.col, 0.4 * relS.bright));
-        g.addColorStop(1, alphaCol(y.col, 0));
-        c.fillStyle = g;
-        c.beginPath();
-        c.moveTo(0, -r * 0.62);
-        c.lineTo(Math.cos(a + o - 0.16) * r * 2.6, -r * 0.62 + Math.sin(a + o - 0.16) * r * 2.6);
-        c.lineTo(Math.cos(a + o + 0.16) * r * 2.6, -r * 0.62 + Math.sin(a + o + 0.16) * r * 2.6);
-        c.closePath(); c.fill();
-      });
-      lamp(c, 0, -r * 0.62, 2.2, y.col, 0.95, true);
-    }],
-    ['Bell Buoy', function (y) {
-      var c = y.c, r = y.r, bob = Math.sin(y.t * 1.4) * 1.5;
-      c.save(); c.translate(0, bob);
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.6;
-      c.beginPath();
-      c.moveTo(-r * 0.5, r * 0.35);
-      c.quadraticCurveTo(-r * 0.5, -r * 0.6, 0, -r * 0.6);
-      c.quadraticCurveTo(r * 0.5, -r * 0.6, r * 0.5, r * 0.35);
-      c.closePath(); c.stroke();
-      lamp(c, 0, -r * 0.75, 2, y.col, 0.5 + 0.5 * Math.sin(y.t * 2.4), true);
-      c.restore();
-      c.strokeStyle = alphaCol(PARCH, 0.3); c.lineWidth = 1;
-      c.beginPath(); c.ellipse(0, r * 0.55, r * 0.85, r * 0.2, 0, 0, 6.29); c.stroke();
-    }],
-    ['Channel Gates', function (y) {
-      var c = y.c, r = y.r;
-      [-1, 1].forEach(function (s, i) {
-        var on = Math.sin(y.t * 2.2 + i * Math.PI) > 0;
-        c.strokeStyle = alphaCol(PARCH, 0.85); c.lineWidth = 1.6;
-        c.beginPath(); c.moveTo(s * r * 1.05, -r * 0.55); c.lineTo(s * r * 1.05, r * 0.55); c.stroke();
-        c.beginPath(); c.moveTo(s * r * 1.05 - 3, r * 0.55); c.lineTo(s * r * 1.05 + 3, r * 0.55); c.stroke();
-        lamp(c, s * r * 1.05, -r * 0.68, 2, y.col, on ? 0.95 : 0.15, on);
-      });
-    }],
-    ['Lantern', function (y) {
-      var c = y.c, r = y.r;
-      var flick = 0.75 + 0.25 * Math.sin(y.t * 7.3) * Math.sin(y.t * 3.1);
-      c.fillStyle = alphaCol(y.col, 0.2 * flick * relS.bright);
-      c.beginPath(); c.arc(0, 0, r * 1.5, 0, 6.29); c.fill();
-      lamp(c, 0, 0, r * 0.34, y.col, 0.85 * flick, false);
-      c.strokeStyle = alphaCol(PARCH, 0.95); c.lineWidth = 1.4;
-      c.beginPath();
-      for (var i = 0; i <= 6; i++) {
-        var a = i / 6 * Math.PI * 2 - Math.PI / 2;
-        var px = Math.cos(a) * r * 0.72, py = Math.sin(a) * r * 0.72;
-        if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
-      }
-      c.closePath(); c.stroke();
-      c.beginPath(); c.arc(0, -r * 0.95, r * 0.2, 0, 6.29); c.stroke();
-    }],
-    ['Gyre', function (y) {
-      var c = y.c, r = y.r;
-      var squash = Math.sin(y.t * 1.3) * 0.85;
-      c.strokeStyle = alphaCol(PARCH, 0.85); c.lineWidth = 1.3;
-      c.beginPath(); c.ellipse(0, 0, r, Math.abs(squash) * r + 1, 0, 0, 6.29); c.stroke();
-      lamp(c, r, 0, 1.8, y.col, 0.9, true);
-      lamp(c, -r, 0, 1.8, y.col, 0.9, false);
-      lamp(c, 0, 0, 2, y.col, 0.5 + 0.4 * Math.sin(y.t * 2), false);
-    }],
-    ['Obelisk', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.5;
-      c.beginPath();
-      c.moveTo(-r * 0.16, r * 0.85); c.lineTo(-r * 0.08, -r * 0.85);
-      c.lineTo(r * 0.08, -r * 0.85); c.lineTo(r * 0.16, r * 0.85);
-      c.closePath(); c.stroke();
-      var pulse = 0.4 + 0.6 * Math.pow(0.5 + 0.5 * Math.sin(y.t * 2.6), 2);
-      lamp(c, 0, -r * 1.05, 2.2, y.col, pulse, true);
-    }],
-    ['Dish Array', function (y) {
-      var c = y.c, r = y.r;
-      var a = Math.sin(y.t * 0.9) * 0.7 - Math.PI / 2;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(-r * 0.5, r * 0.8); c.lineTo(0, 0); c.lineTo(r * 0.5, r * 0.8); c.stroke();
-      c.beginPath(); c.arc(0, 0, r * 0.62, a - 0.85, a + 0.85); c.stroke();
-      lamp(c, 0, 0, 1.8, y.col, 0.85, false);
-      var ph = (y.t * 0.8) % 1;
-      c.strokeStyle = alphaCol(y.col, (1 - ph) * 0.5 * relS.bright);
-      c.lineWidth = 1.2;
-      c.beginPath(); c.arc(0, 0, r * 0.7 + ph * r * 1.6, a - 0.5, a + 0.5); c.stroke();
-    }],
-    ['Firefly Cage', function (y) {
-      var c = y.c, r = y.r;
-      lamp(c, 0, 0, 2, y.col, 0.4 + 0.2 * Math.sin(y.t * 1.7), true);
-      for (var i = 0; i < 5; i++) {
-        var a = y.t * (0.7 + i * 0.13) + i * 2.4;
-        var rr = r * (0.55 + (i % 3) * 0.28);
-        lamp(c, Math.cos(a) * rr, Math.sin(a) * rr * 0.8, 1.3,
-          y.col, 0.35 + 0.6 * (0.5 + 0.5 * Math.sin(y.t * 3 + i * 2)), false);
-      }
-    }],
-    ['Star Fort', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.85); c.lineWidth = 1.3;
-      var corners = [];
-      c.beginPath();
-      for (var i = 0; i <= 6; i++) {
-        var a = i / 6 * Math.PI * 2 - Math.PI / 2;
-        var px = Math.cos(a) * r * 0.85, py = Math.sin(a) * r * 0.85;
-        corners.push([px, py]);
-        if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
-      }
-      c.stroke();
-      var lit = Math.floor(y.t * 2.4) % 6;
-      for (var k = 0; k < 6; k++) {
-        lamp(c, corners[k][0], corners[k][1], 1.6, y.col, k === lit ? 1 : 0.18, k === lit);
-      }
-    }],
-    ['Astrolabe', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.8); c.lineWidth = 1.2;
-      c.save(); c.rotate(y.t * 0.5);
-      c.beginPath(); c.ellipse(0, 0, r, r * 0.4, 0, 0, 6.29); c.stroke();
-      c.restore();
-      c.save(); c.rotate(-y.t * 0.35 + 1.1);
-      c.beginPath(); c.ellipse(0, 0, r * 0.85, r * 0.32, 0, 0, 6.29); c.stroke();
-      c.restore();
-      lamp(c, 0, 0, 2.2, y.col, 0.8 + 0.2 * Math.sin(y.t * 2.2), true);
-    }],
-    ['Mooring Mast', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(0, r * 0.9); c.lineTo(0, -r * 0.9); c.stroke();
-      c.lineWidth = 0.8;
-      c.beginPath(); c.moveTo(0, -r * 0.9); c.lineTo(-r * 0.55, r * 0.9); c.stroke();
-      c.beginPath(); c.moveTo(0, -r * 0.9); c.lineTo(r * 0.55, r * 0.9); c.stroke();
-      var seq = Math.floor(y.t * 2.6) % 3;
-      for (var i = 0; i < 3; i++) {
-        lamp(c, 0, -r * 0.75 + i * r * 0.55, 1.7, y.col, i === seq ? 1 : 0.22, i === seq);
-      }
-    }],
-    ['Semaphore', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.6;
-      c.beginPath(); c.moveTo(0, r * 0.9); c.lineTo(0, -r * 0.75); c.stroke();
-      var step = Math.floor(y.t * 0.7) % 3;
-      var target = [-0.5, -1.1, 0.2][step];
-      var wob = Math.sin(y.t * 6) * 0.03;
-      [1, -1].forEach(function (s, i) {
-        var a = target * s + (i ? 0.5 : 0) + wob;
-        var ax = Math.cos(a) * r * 0.72, ay = -r * 0.45 + Math.sin(a) * r * 0.72;
-        c.lineWidth = 1.4;
-        c.beginPath(); c.moveTo(0, -r * 0.45); c.lineTo(ax, ay); c.stroke();
-        lamp(c, ax, ay, 1.6, y.col, 0.9, false);
-      });
-    }],
-    ['Heliograph', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.4;
-      c.beginPath(); c.arc(0, 0, r * 0.4, 0, 6.29); c.stroke();
-      c.beginPath(); c.moveTo(-r * 0.45, r * 0.85); c.lineTo(0, r * 0.35); c.lineTo(r * 0.45, r * 0.85); c.stroke();
-      var f = Math.pow(Math.max(0, Math.sin(y.t * 1.8)), 8);
-      lamp(c, 0, 0, r * 0.22, y.col, 0.3 + 0.7 * f, f > 0.3);
-      if (f > 0.05) {
-        c.strokeStyle = alphaCol(mix(y.col, PARCH, 0.6), f * 0.95);
-        c.lineWidth = 1;
-        var s = r * (0.7 + f * 1.1);
-        c.beginPath();
-        c.moveTo(-s, 0); c.lineTo(s, 0); c.moveTo(0, -s); c.lineTo(0, s);
-        c.stroke();
-      }
-    }],
-    ['Compass Rose', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.6); c.lineWidth = 1;
-      c.beginPath();
-      for (var i = 0; i < 8; i++) {
-        var a = i / 8 * Math.PI * 2;
-        var rr = i % 2 ? r * 0.45 : r * 0.95;
-        c.moveTo(0, 0);
-        c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
-      }
-      c.stroke();
-      var lit = Math.floor(y.t * 1.8) % 4;
-      for (var k = 0; k < 4; k++) {
-        var ka = k / 4 * Math.PI * 2;
-        lamp(c, Math.cos(ka) * r * 0.95, Math.sin(ka) * r * 0.95, 1.6, y.col, k === lit ? 1 : 0.2, k === lit);
-      }
-    }],
-    ['Twin Pontoons', function (y) {
-      var c = y.c, r = y.r;
-      var rot = Math.sin(y.t * 0.6) * 0.3;
-      c.save(); c.rotate(rot);
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.4;
-      c.beginPath(); c.moveTo(-r * 0.75, 0); c.lineTo(r * 0.75, 0); c.stroke();
-      c.beginPath(); c.arc(-r * 0.85, 0, r * 0.3, 0, 6.29); c.stroke();
-      c.beginPath(); c.arc(r * 0.85, 0, r * 0.3, 0, 6.29); c.stroke();
-      var left = Math.sin(y.t * 2.4) > 0;
-      lamp(c, -r * 0.85, 0, 1.6, y.col, left ? 0.95 : 0.18, left);
-      lamp(c, r * 0.85, 0, 1.6, y.col, left ? 0.18 : 0.95, !left);
-      c.restore();
-    }],
-    ['Candle Spire', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.4;
-      c.beginPath();
-      c.moveTo(-r * 0.3, r * 0.85); c.lineTo(0, -r * 0.55); c.lineTo(r * 0.3, r * 0.85);
-      c.stroke();
-      var sway = Math.sin(y.t * 2.1) * r * 0.08;
-      var g = c.createRadialGradient(sway, -r * 0.85, 0.5, sway, -r * 0.85, r * 0.75);
-      g.addColorStop(0, alphaCol(mix(y.col, PARCH, 0.4), 0.85 * relS.bright));
-      g.addColorStop(1, alphaCol(y.col, 0));
-      c.fillStyle = g;
-      c.beginPath();
-      c.ellipse(sway, -r * 0.85, r * 0.32, r * 0.5, 0, 0, 6.29);
-      c.fill();
-    }],
-    ['Orrery', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.85); c.lineWidth = 1.3;
-      c.beginPath(); c.arc(0, 0, r * 0.34, 0, 6.29); c.stroke();
-      c.save();
-      c.setLineDash([1.5, 3]);
-      c.strokeStyle = alphaCol(PARCH, 0.35); c.lineWidth = 0.8;
-      c.beginPath(); c.ellipse(0, 0, r * 0.95, r * 0.55, 0, 0, 6.29); c.stroke();
-      c.restore();
-      var a = y.t * 1.4;
-      lamp(c, Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.55, 1.8, y.col, 0.95, true);
-    }],
-    ['Anchor Light', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.5; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(0, -r * 0.55); c.lineTo(0, r * 0.6); c.stroke();
-      c.beginPath(); c.moveTo(-r * 0.42, -r * 0.28); c.lineTo(r * 0.42, -r * 0.28); c.stroke();
-      c.beginPath(); c.arc(0, r * 0.28, r * 0.5, 0.35, Math.PI - 0.35); c.stroke();
-      c.beginPath(); c.arc(0, -r * 0.72, r * 0.16, 0, 6.29); c.stroke();
-      var pulse = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(y.t * 1.8));
-      c.strokeStyle = alphaCol(y.col, pulse * 0.55 * relS.bright);
-      c.lineWidth = 1.2;
-      c.beginPath(); c.arc(0, 0, r * 1.15, 0, 6.29); c.stroke();
-      lamp(c, 0, -r * 0.72, 1.5, y.col, pulse, false);
-    }],
-    ['Ion Fountain', function (y) {
-      var c = y.c, r = y.r;
-      c.strokeStyle = alphaCol(PARCH, 0.9); c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(-r * 0.45, r * 0.65); c.lineTo(r * 0.45, r * 0.65); c.stroke();
-      lamp(c, 0, r * 0.5, 1.8, y.col, 0.8, true);
-      for (var i = 0; i < 8; i++) {
-        var ph = ((y.t * 0.55 + i / 8) % 1);
-        var px = Math.sin(i * 5.1) * r * 0.4 * ph;
-        var py = r * 0.5 - ph * r * 1.5;
-        lamp(c, px, py, 1.1, y.col, (1 - ph) * 0.85, false);
-      }
-    }],
-  ];
-
-  function buildRelayPlate() {
-    var grid = document.getElementById('grid-relay');
-    var W = 250, H = 170;
-    RELAYS.forEach(function (def, i) {
-      var rnd0 = rngFor(900 + i);
-      var stars = [];
-      for (var s = 0; s < 30; s++) stars.push([rnd0() * W, rnd0() * H, 0.4 + rnd0(), 0.05 + rnd0() * 0.25]);
-      var blobs = [];
-      for (var b = 0; b < 3; b++) {
-        blobs.push([W / 2 + (rnd0() - 0.5) * 90, H / 2 + (rnd0() - 0.5) * 50, 42 + rnd0() * 30]);
-      }
-      addCard(grid, 'relay', i, i + 1, def[0], null, W, H, function (c, w, h, t) {
+      addCard(grid, 'ship', i, i + 1, def[0], def[1], W, H, function (c, w, h, t) {
         c.fillStyle = INK; c.fillRect(0, 0, w, h);
-        stars.forEach(function (st) {
-          c.fillStyle = alphaCol(TH.starColour, st[3]);
-          c.fillRect(st[0], st[1], st[2], st[2]);
+        drawStars(c, stars, t);
+        nebulaWash(c, blobs, t, 0.4);
+        paintPlanet(c, w - 52, 42, 10, TINTS[(i + 5) % 8], seed + 3);
+        var col = colFor(shipS, i);
+        var cy = h * 0.54;
+        [2.4, -2.4].forEach(function (o) {   // the corridor it serves, faintly
+          c.strokeStyle = alphaCol(col, 0.10);
+          c.lineWidth = 0.9;
+          c.beginPath(); c.moveTo(0, cy + o); c.lineTo(w, cy + o); c.stroke();
         });
-        if (relS.nebula > 0.02) {
-          blobs.forEach(function (bl) {
-            var g = c.createRadialGradient(bl[0], bl[1], 4, bl[0], bl[1], bl[2]);
-            g.addColorStop(0, 'hsla(268,55%,60%,' + 0.18 * relS.nebula + ')');
-            g.addColorStop(1, 'hsla(268,55%,60%,0)');
-            c.fillStyle = g;
-            c.beginPath(); c.arc(bl[0], bl[1], bl[2], 0, 6.29); c.fill();
-          });
-        }
-        var col = colFor(relS, i);
-        c.strokeStyle = alphaCol(col, 0.3); // the corridor on its way through
-        c.lineWidth = 1.2;
-        c.beginPath(); c.moveTo(0, h * 0.55); c.lineTo(w, h * 0.5); c.stroke();
+
+        var sc = shipS.scale;
+        var L = 112 * sc, Wd = 36 * sc;
+        var R = 50 * sc * shipS.orbit;
+        // on station under easy steam: she stays in frame, drifting a little
+        var cx = w * 0.58 + Math.sin(t * 0.14 + i * 2.1) * 26;
+
+        // pod barge astern, with its own small orbit
+        var podX = cx - (L * 0.78 + 40 * sc);
+        var podL = L * 0.42, podW = Wd * 0.5, podR = R * 0.5;
+        c.strokeStyle = alphaCol(BRASS, 0.4);                    // tow line, sagging slightly
+        c.lineWidth = 0.9;
+        c.beginPath();
+        c.moveTo(cx - L * 0.48, cy);
+        c.quadraticCurveTo((cx - L * 0.48 + podX) / 2, cy + 4, podX + podL * 0.5, cy);
+        c.stroke();
+        var podOrbit = orbitPositions(3, podX, cy, podR, t * 1.2, shipS.pace, 2.1);
+        orbitRing(c, podX, cy, podR, col);
+        podOrbit.forEach(function (p, k) {
+          if (p.depth < 0) chip(c, p.x, p.y, 8 * shipS.crate * p.scale, POD_CARGO[k], 0.6);
+        });
         c.save();
-        c.translate(w / 2, h * 0.52);
-        var sc = relS.scale;
-        c.scale(sc, sc);
-        def[1]({ c: c, r: 14, col: col, t: t * relS.rate, S: relS });
+        c.translate(podX, cy);
+        def[2](c, podL, podW, col, t + 3);
         c.restore();
+        podOrbit.forEach(function (p, k) {
+          if (p.depth >= 0) chip(c, p.x, p.y, 8 * shipS.crate * p.scale, POD_CARGO[k], 0.95);
+        });
+
+        // the vessel with her lading in open orbit
+        var pos = orbitPositions(5, cx, cy, R, t, shipS.pace, 0);
+        orbitRing(c, cx, cy, R, col);
+        pos.forEach(function (p, k) {
+          if (p.depth < 0) chip(c, p.x, p.y, 10 * shipS.crate * p.scale, SHIP_CARGO[k], 0.6);
+        });
+        c.save();
+        c.translate(cx, cy);
+        def[2](c, L, Wd, col, t);
+        c.restore();
+        pos.forEach(function (p, k) {
+          if (p.depth >= 0) chip(c, p.x, p.y, 10 * shipS.crate * p.scale, SHIP_CARGO[k], 0.95);
+        });
+        vignette(c, w, h);
       });
     });
   }
 
   // ================================================================
-  // PLATE IV — letterforms
+  // PLATE III — three relay beacons
+  // ================================================================
+  var relS = { scale: 1, rate: 1, bright: 1, nebula: 1, colour: -1 };
+
+  var RELAYS = [
+    ['Lighthouse', 'rotating lens · brass framework', function (c, col, t, S) {
+      var B = S.bright;
+      // the great halo, breathing into the weather
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, 0, -14, 62, col, 0.10 * B * (1 + 0.12 * Math.sin(t * 0.6)));
+      // twin rotating beams
+      var a0 = t * 0.55;
+      [0, Math.PI].forEach(function (o) {
+        var a = a0 + o, reach = 95;
+        var ex = Math.cos(a) * reach, ey = -14 + Math.sin(a) * reach * 0.5;
+        var g = c.createLinearGradient(0, -14, ex, ey);
+        g.addColorStop(0, alphaCol(col, 0.30 * B));
+        g.addColorStop(1, alphaCol(col, 0));
+        c.fillStyle = g;
+        var half = 0.13;
+        c.beginPath();
+        c.moveTo(0, -14);
+        c.lineTo(Math.cos(a - half) * reach, -14 + Math.sin(a - half) * reach * 0.5);
+        c.lineTo(Math.cos(a + half) * reach, -14 + Math.sin(a + half) * reach * 0.5);
+        c.closePath();
+        c.fill();
+      });
+      // a glint as the beam sweeps past the observer
+      var glint = Math.pow(Math.abs(Math.cos(a0)), 30);
+      if (glint > 0.02) {
+        c.strokeStyle = alphaCol('#fff6e0', glint * 0.8 * B);
+        c.lineWidth = 0.8;
+        c.beginPath();
+        c.moveTo(-18 * glint - 4, -14); c.lineTo(18 * glint + 4, -14);
+        c.moveTo(0, -14 - 14 * glint - 3); c.lineTo(0, -14 + 14 * glint + 3);
+        c.stroke();
+      }
+      c.restore();
+      // the tower: tapering brass lattice on a stone base
+      c.strokeStyle = alphaCol(BRASS, 0.8);
+      c.lineWidth = 1.4;
+      c.beginPath(); c.moveTo(-8, 22); c.lineTo(-3.4, -8); c.stroke();
+      c.beginPath(); c.moveTo(8, 22); c.lineTo(3.4, -8); c.stroke();
+      c.lineWidth = 0.7;
+      [[22, -8, 12.4], [12.4, -8, 3.2], [3.2, -8, -5.4]].forEach(function (row) {
+        var y0 = row[0], y1 = row[2];
+        var w0 = 8 - (22 - y0) / 30 * 4.6, w1 = 8 - (22 - y1) / 30 * 4.6;
+        c.beginPath(); c.moveTo(-w0, y0); c.lineTo(w1, y1); c.stroke();
+        c.beginPath(); c.moveTo(w0, y0); c.lineTo(-w1, y1); c.stroke();
+      });
+      c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(-5.4, -8); c.lineTo(5.4, -8); c.stroke();     // gallery
+      c.fillStyle = mix('#2a3140', BRASS, 0.15);                            // plinth
+      c.beginPath(); c.ellipse(0, 22, 10.5, 3, 0, 0, 6.29); c.fill();
+      c.strokeStyle = alphaCol(BRASS, 0.5);
+      c.lineWidth = 0.8;
+      c.beginPath(); c.ellipse(0, 22, 10.5, 3, 0, 0, 6.29); c.stroke();
+      // the lens: warm heart in a coloured mantle
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, 0, -14, 9, col, 0.55 * B);
+      glowDot(c, 0, -14, 3.4, '#fff6e0', 0.9 * B);
+      c.restore();
+      c.strokeStyle = alphaCol(BRASS, 0.9);                                 // lens cage
+      c.lineWidth = 0.9;
+      c.strokeRect(-2.6, -17.6, 5.2, 6.4);
+    }],
+
+    ['Orrery', 'calibration rings · slow orbits', function (c, col, t, S) {
+      var B = S.bright;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, 0, 0, 40, col, 0.10 * B * (1 + 0.1 * Math.sin(t * 0.5)));
+      glowDot(c, 0, 0, 11, col, 0.4 * B);
+      glowDot(c, 0, 0, 3.2, '#fff6e0', 0.95 * B);
+      c.restore();
+      // outer calibration arcs, engraved and still
+      c.save();
+      c.setLineDash([2, 5.5]);
+      c.strokeStyle = alphaCol(BRASS, 0.3);
+      c.lineWidth = 0.8;
+      c.beginPath(); c.arc(0, 0, 44, -0.5, 1.2); c.stroke();
+      c.beginPath(); c.arc(0, 0, 44, Math.PI - 0.4, Math.PI + 1.1); c.stroke();
+      c.restore();
+      // three floating rings, each keeping its own slow time
+      [[30, 0.34, 0.22, 0.3], [21, 0.52, -0.31, 1.8], [38, 0.2, 0.12, 3.6]].forEach(function (ring, i) {
+        var rx = ring[0], squash = ring[1], rot = t * ring[2] + ring[3];
+        c.save();
+        c.rotate(Math.sin(rot * 0.7) * 0.25);
+        c.strokeStyle = alphaCol(BRASS, 0.62);
+        c.lineWidth = 1.05;
+        c.beginPath(); c.ellipse(0, 0, rx, rx * squash, 0, 0, 6.29); c.stroke();
+        // the ring's attendant bead, in the corridor's colour
+        var ba = rot * 2.2;
+        var bx = Math.cos(ba) * rx, by = Math.sin(ba) * rx * squash;
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        glowDot(c, bx, by, 4.5, col, 0.35 * B);
+        c.restore();
+        c.fillStyle = alphaCol(mix(col, PARCH, 0.4), 0.9);
+        c.beginPath(); c.arc(bx, by, 1.2, 0, 6.29); c.fill();
+        c.restore();
+      });
+    }],
+
+    ['Harbour Buoy', 'occulting lamp · patient station-keeping', function (c, col, t, S) {
+      var B = S.bright;
+      c.save();
+      c.rotate(Math.sin(t * 0.45) * 0.05);                       // slow sway
+      c.translate(0, Math.sin(t * 0.8) * 2.2);                   // gentle bob
+      // float halo settling into the weather below
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, 0, 20, 26, col, 0.07 * B);
+      c.restore();
+      // the mast and its crosstree
+      var mg = c.createLinearGradient(0, -26, 0, 20);
+      mg.addColorStop(0, alphaCol(mix(BRASS, '#fff2c8', 0.3), 0.9));
+      mg.addColorStop(1, alphaCol(mix(BRASS, '#4a3f22', 0.5), 0.8));
+      c.strokeStyle = mg;
+      c.lineWidth = 1.7;
+      c.beginPath(); c.moveTo(0, 18); c.lineTo(0, -24); c.stroke();
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(-4.5, -15); c.lineTo(4.5, -15); c.stroke();
+      // stabilising fins and the counterweight below
+      c.strokeStyle = alphaCol(BRASS, 0.7);
+      c.lineWidth = 1.2;
+      [[-7, 21], [0, 23], [7, 21]].forEach(function (f) {
+        c.beginPath(); c.moveTo(0, 14); c.lineTo(f[0], f[1]); c.stroke();
+      });
+      c.fillStyle = mix('#2a3140', BRASS, 0.2);
+      c.beginPath(); c.arc(0, 20, 3.2, 0, 6.29); c.fill();
+      c.strokeStyle = alphaCol(BRASS, 0.6);
+      c.lineWidth = 0.8;
+      c.beginPath(); c.arc(0, 20, 3.2, 0, 6.29); c.stroke();
+      // the lamp: a proper occulting light — long on, brief dark
+      var u = (t * 0.45 * S.rate) % 1;
+      function smooth(e0, e1, v) {
+        var x = Math.max(0, Math.min(1, (v - e0) / (e1 - e0)));
+        return x * x * (3 - 2 * x);
+      }
+      var lit = 0.18 + 0.82 * Math.min(smooth(0, 0.06, u), 1 - smooth(0.72, 0.8, u));
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      glowDot(c, 0, -28, 17, col, 0.35 * lit * B);
+      glowDot(c, 0, -28, 6, col, 0.5 * lit * B);
+      glowDot(c, 0, -28, 2, '#fff6e0', 0.95 * lit * B);
+      c.restore();
+      // lamp cage
+      c.strokeStyle = alphaCol(BRASS, 0.85);
+      c.lineWidth = 0.9;
+      c.strokeRect(-2.4, -31, 4.8, 5.6);
+      c.beginPath(); c.moveTo(-2.4, -31); c.lineTo(0, -33.5); c.lineTo(2.4, -31); c.stroke();
+      c.restore();
+    }],
+  ];
+
+  function buildRelayPlate() {
+    var grid = document.getElementById('grid-relay');
+    var W = 420, H = 240;
+    RELAYS.forEach(function (def, i) {
+      var seed = 900 + i;
+      var rnd0 = rngFor(seed);
+      var stars = makeStars(rnd0, 45, W, H);
+      var blobs = [];
+      for (var b = 0; b < 4; b++) {
+        blobs.push([W / 2 + (rnd0() - 0.5) * 200, H / 2 + (rnd0() - 0.5) * 90,
+          55 + rnd0() * 40, b === 3 ? 322 : 268]);
+      }
+      addCard(grid, 'relay', i, i + 1, def[0], def[1], W, H, function (c, w, h, t) {
+        c.fillStyle = INK; c.fillRect(0, 0, w, h);
+        drawStars(c, stars, t);
+        nebulaWash(c, blobs, t, relS.nebula);
+        var col = colFor(relS, i);
+        // the corridor on its way through the weather
+        c.strokeStyle = alphaCol(col, 0.22);
+        c.lineWidth = 0.8;
+        c.beginPath(); c.moveTo(0, h * 0.56); c.lineTo(w, h * 0.5); c.stroke();
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        for (var d = 20; d < w; d += 46) {
+          glowDot(c, d, h * 0.56 - d / w * h * 0.06, 2.4, col, 0.18);
+        }
+        c.restore();
+        c.save();
+        c.translate(w / 2, h * 0.5);
+        c.scale(relS.scale * 1.35, relS.scale * 1.35);
+        def[2](c, col, t * (0.6 + 0.4 * relS.rate), relS);
+        c.restore();
+        vignette(c, w, h);
+      });
+    });
+  }
+
+  // ================================================================
+  // PLATE IV — letterforms (carried over from the first edition)
   // ================================================================
   var typeS = { track: 0.18, body: 12 };
 
@@ -1353,6 +1111,7 @@
     } catch (e) { return true; }
   }
 
+  var typeCards = [];
   function buildTypePlate() {
     var grid = document.getElementById('grid-type');
     FONTS.forEach(function (f, i) {
@@ -1379,7 +1138,6 @@
       typeCards.push(el);
     });
   }
-  var typeCards = [];
 
   function applyTypeSettings() {
     var plate = document.getElementById('plate-type');
@@ -1391,7 +1149,7 @@
   // selection, persistence & the requisition docket
   // ================================================================
   var sel = { cor: null, ship: null, relay: null, type: null };
-  var STORE = 'cw_patternbook_v1';
+  var STORE = 'cw_patternbook_v2';
 
   function select(plate, idx) {
     sel[plate] = (sel[plate] === idx) ? null : idx;
@@ -1411,8 +1169,7 @@
       el.classList.toggle('none', !txt);
     }
     put('pick-cor', sel.cor != null ? 'No. ' + (sel.cor + 1) + ' ' + CORRIDORS[sel.cor][0] : null);
-    put('pick-ship', sel.ship != null ? 'No. ' + (sel.ship + 1) + ' ' + HULLS[Math.floor(sel.ship / 3)][0] +
-      ' · ' + LADINGS[sel.ship % 3] : null);
+    put('pick-ship', sel.ship != null ? 'No. ' + (sel.ship + 1) + ' ' + SHIPS[sel.ship][0] : null);
     put('pick-relay', sel.relay != null ? 'No. ' + (sel.relay + 1) + ' ' + RELAYS[sel.relay][0] : null);
     put('pick-type', sel.type != null ? 'No. ' + (sel.type + 1) + ' ' + FONTS[sel.type][0] : null);
   }
@@ -1451,13 +1208,12 @@
 
   function requisition() {
     var doc = {
-      docket: 'C&W Pattern Book requisition',
+      docket: 'C&W Pattern Book requisition (2nd ed.)',
       corridor: sel.cor == null ? null : {
         no: sel.cor + 1, name: CORRIDORS[sel.cor][0], settings: corS,
       },
       vessel: sel.ship == null ? null : {
-        no: sel.ship + 1, hull: HULLS[Math.floor(sel.ship / 3)][0],
-        lading: LADINGS[sel.ship % 3], settings: shipS,
+        no: sel.ship + 1, name: SHIPS[sel.ship][0], settings: shipS,
       },
       relay: sel.relay == null ? null : {
         no: sel.relay + 1, name: RELAYS[sel.relay][0], settings: relS,
@@ -1485,28 +1241,28 @@
   restore();
 
   var ctlCor = document.getElementById('ctl-cor');
-  slider(ctlCor, corS, 'weight', 'Weight', 0.4, 3, 0.05);
+  slider(ctlCor, corS, 'weight', 'Weight', 0.4, 2.2, 0.05);
   slider(ctlCor, corS, 'glow', 'Glow', 0, 3, 0.1);
   slider(ctlCor, corS, 'alpha', 'Presence', 0.2, 1, 0.05);
-  slider(ctlCor, corS, 'speed', 'Flow', 0, 3, 0.1);
-  slider(ctlCor, corS, 'density', 'Density', 0.4, 2.5, 0.05);
+  slider(ctlCor, corS, 'shimmer', 'Shimmer', 0, 3, 0.1);
+  slider(ctlCor, corS, 'density', 'Marks', 0.4, 2.5, 0.05);
   swatches(ctlCor, corS);
 
   var ctlShip = document.getElementById('ctl-ship');
-  slider(ctlShip, shipS, 'scale', 'Hull size', 0.6, 1.6, 0.05);
+  slider(ctlShip, shipS, 'scale', 'Hull size', 0.6, 1.5, 0.05);
   slider(ctlShip, shipS, 'orbit', 'Orbit radius', 0.6, 1.8, 0.05);
   slider(ctlShip, shipS, 'pace', 'Orbit pace', 0, 2.5, 0.05);
   slider(ctlShip, shipS, 'crate', 'Crate size', 0.6, 1.6, 0.05);
   slider(ctlShip, shipS, 'ring', 'Orbit line', 0, 1, 0.05);
   slider(ctlShip, shipS, 'livery', 'Livery (steel → paint)', 0, 1, 0.05);
-  slider(ctlShip, shipS, 'exhaust', 'Exhaust', 0, 2, 0.1);
+  slider(ctlShip, shipS, 'exhaust', 'Engine glow', 0, 2, 0.1);
   swatches(ctlShip, shipS);
 
   var ctlRelay = document.getElementById('ctl-relay');
-  slider(ctlRelay, relS, 'scale', 'Size', 0.6, 2, 0.05);
+  slider(ctlRelay, relS, 'scale', 'Size', 0.6, 1.8, 0.05);
   slider(ctlRelay, relS, 'rate', 'Signal rate', 0.2, 2.5, 0.05);
   slider(ctlRelay, relS, 'bright', 'Lamp brightness', 0.3, 2, 0.05);
-  slider(ctlRelay, relS, 'nebula', 'Weather', 0, 1, 0.05);
+  slider(ctlRelay, relS, 'nebula', 'Weather', 0, 1.4, 0.05);
   swatches(ctlRelay, relS);
 
   var ctlType = document.getElementById('ctl-type');
