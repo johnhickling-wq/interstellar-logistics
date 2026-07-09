@@ -901,17 +901,32 @@
 
       drawPlanet(c, R, bright, t);
 
+      // the freight band: a donut identical to the vessels' — a faint
+      // inner guide line, waiting consignments adrift between the
+      // lines, and the outer line serving as the reserve gauge
+      var ringIn = TH.cargoRingIn;
+      var ringR = TH.cargoRingIn + TH.cargoRingW;
+
       // hub: an outer orbital works ring
       if (c.isHub) {
         ctx.strokeStyle = alphaColor(PARCH, Math.min(1, 0.85 * bright));
         ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.arc(c.x, c.y, R + SIZES.ringGap + 5.5, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, ringR + 4.5, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // reserve ring / distress countdown
-      var ringR = R + SIZES.ringGap;
+      // band lines: inner guide, and the outer as the empty track
+      ctx.strokeStyle = alphaColor(PARCH, TH.cargoRingAlpha);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, ringIn, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // the outer line brightens with the reserve: full ring, full larder
       if (c.starve === null) {
         var warn = c.reserve <= 0.4;
         ctx.strokeStyle = !warn ? PARCH_DIM
@@ -919,12 +934,6 @@
         ctx.lineWidth = warn ? TH.ringWidth + 0.6 : TH.ringWidth;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, c.reserve));
-        ctx.stroke();
-        // ghost of full ring
-        ctx.strokeStyle = alphaColor(PARCH, 0.10);
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2);
         ctx.stroke();
       } else {
         var frac = Math.max(0, c.starve / cfg.starveCountdownSec);
@@ -963,8 +972,8 @@
       CW.drawGlyph(ctx, c.type, c.x, c.y, gr, 'outline', alphaColor(PARCH, Math.min(1, bright)));
       CW.drawGlyphDetail(ctx, c.type, c.x, c.y, gr, alphaColor(PARCH, bright * 0.5));
 
-      // waiting crates, queued beside the colony
-      drawQueue(game, c, R);
+      // waiting crates, adrift in the freight band
+      drawQueue(game, c, (ringIn + ringR) / 2, t);
 
       // assign-mode target pulse
       if (CW.assignMode === 'hub' && !c.isHub) {
@@ -980,17 +989,24 @@
     });
   }
 
-  function drawQueue(game, c, R) {
-    var qx = c.x + R + 12, qy = c.y - 9;
-    var maxDraw = 14;
-    for (var i = 0; i < Math.min(c.queue.length, maxDraw); i++) {
-      var col = i % 5, row = Math.floor(i / 5);
-      CW.drawGlyph(ctx, c.queue[i].type, qx + col * 12.5, qy + row * 12.5, SIZES.crateR, 'solid', PARCH);
+  function drawQueue(game, c, orbitR, t) {
+    var n = c.queue.length;
+    if (!n) return;
+    var maxDraw = 12;
+    var m = Math.min(n, maxDraw);
+    // evenly spaced consignments on a slow, patient drift
+    var drift = t * 0.10 + (hashId(c.id) % 63) * 0.1;
+    var gr = Math.min(SIZES.crateR, TH.cargoRingW * 0.58);
+    for (var i = 0; i < m; i++) {
+      var a = drift + (i / m) * Math.PI * 2;
+      CW.drawGlyph(ctx, c.queue[i].type,
+        c.x + Math.cos(a) * orbitR, c.y + Math.sin(a) * orbitR,
+        gr, 'solid', PARCH);
     }
-    if (c.queue.length > maxDraw) {
+    if (n > maxDraw) {
       ctx.fillStyle = PARCH_DIM;
       ctx.font = '9px ' + (CW.themeFont || 'Georgia, serif');
-      ctx.fillText('+' + (c.queue.length - maxDraw), qx, qy + 3 * 12.5);
+      ctx.fillText('+' + (n - maxDraw), c.x - 6, c.y + orbitR + 13);
     }
   }
 

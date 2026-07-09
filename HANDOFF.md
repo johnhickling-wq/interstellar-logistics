@@ -50,6 +50,12 @@ The game is feature-complete and deployed via Netlify (static, no build):
   Spawn variety guard: no archetype repeats within the last three
   spawnings. Commons never have rings; designated colonies always do,
   including when `transformColony` industrialises one in place.
+- Second round of preview feedback: the consignment ring sits further
+  out (cargoRingIn 24) and every colony now wears an identical freight
+  band — two faint lines, waiting crates adrift and evenly spaced
+  between them, the outer line doubling as the reserve/distress gauge
+  (ringGap is retired from the schema, kept in defaults for saved-theme
+  compat). Colony glyphs are thinner (glyphLine 1.9).
 - Owner preview feedback, all addressed: worlds vary in stature
   (`worldSizeVar`), the heavy small-radius outline is gone, shimmer is
   boosted (`worldShimmer`), worlds are typecast to the cargo they lack

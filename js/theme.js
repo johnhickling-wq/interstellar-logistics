@@ -58,7 +58,7 @@
     halo: 1.0,                 // colony halo glow
     specialRing: 1.0,          // ringed-world ring opacity
     glyphScale: 0.56,          // glyph size as fraction of radius
-    glyphLine: 2.5,
+    glyphLine: 1.9,
 
     // Generated worlds — the Planetary Works supplies the frontier.
     // Style weights mix like paint, exactly as in planets.html.
@@ -72,7 +72,8 @@
     worldSizeVar: 0.6,         // portion of each world's ±50% size shown
     worldShimmer: 1.6,         // aura & sparkle boost on the route chart
 
-    // Reserve rings & feedback
+    // Reserve rings & feedback (the gauge rides the freight band's
+    // outer line; ringGap is retired but kept for saved-theme compat)
     ringGap: 7,
     ringWidth: 2.6,
 
@@ -93,7 +94,7 @@
     exhaust: 1.0,              // engine flame intensity
     trailAlpha: 1.0,           // engine trail strength
     cargoCell: 5.6,            // container size on pod barges
-    cargoRingIn: 21,           // consignment ring inner radius
+    cargoRingIn: 24,           // consignment ring inner radius
     cargoRingW: 8,             // consignment ring depth
     cargoRingGlyph: 4.6,       // consignment glyph size
     cargoRingAlpha: 0.17,      // consignment ring ink
@@ -175,7 +176,6 @@
       ['specialRing', 'World rings', 'range', 0, 2, 0.05],
       ['glyphScale', 'Glyph size', 'range', 0.3, 0.85, 0.01],
       ['glyphLine', 'Glyph line weight', 'range', 1, 5, 0.1],
-      ['ringGap', 'Reserve ring gap', 'range', 3, 14, 0.5],
       ['ringWidth', 'Reserve ring weight', 'range', 1, 6, 0.1],
     ]},
     { group: 'Generated Worlds', items: [
