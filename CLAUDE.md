@@ -46,7 +46,18 @@ Keep test scripts in the session scratchpad; they are not committed.
 ## Architecture
 
 Script load order matters (globals, no modules):
-`config → theme → copy → glyphs → audio → sim → render → input → ui → devpanel → main`.
+`config → theme → copy → glyphs → planetgen → audio → sim → render → input → ui → devpanel → main`.
+
+`js/planetgen.js` (`CW.PlanetGen`) is the procedural planet engine —
+pure, DOM-free, shared by the game renderer, the Drawing Office and the
+Planetary Works app (`planets.html`). Colonies are drawn as generated
+worlds: the renderer lazily attaches a spec to each colony (`c._world`),
+avoids repeating any archetype seen in the last three spawnings, strips
+rings from common colonies and guarantees them on designated ones
+("designated colonies are ringed worlds" stays true). Style weights and
+the axial-lean amount are theme keys (`world*` in THEME_DEFAULTS, the
+"Generated Worlds" drawer in design.html); `worldPlanets: 0` restores
+the classic tinted discs.
 
 **Two tunable layers, two hidden editor apps, two localStorage keys:**
 

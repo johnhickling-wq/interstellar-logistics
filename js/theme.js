@@ -60,6 +60,16 @@
     glyphScale: 0.56,          // glyph size as fraction of radius
     glyphLine: 2.5,
 
+    // Generated worlds — the Planetary Works supplies the frontier.
+    // Style weights mix like paint, exactly as in planets.html.
+    worldPlanets: 1,           // 1 = procedural worlds, 0 = classic discs
+    worldRealistic: 100,
+    worldCartoon: 0,
+    worldMagical: 100,
+    worldInk: 100,
+    worldPixel: 0,
+    worldAxis: 1.0,            // how much of each world's axial lean shows
+
     // Reserve rings & feedback
     ringGap: 7,
     ringWidth: 2.6,
@@ -161,6 +171,15 @@
       ['glyphLine', 'Glyph line weight', 'range', 1, 5, 0.1],
       ['ringGap', 'Reserve ring gap', 'range', 3, 14, 0.5],
       ['ringWidth', 'Reserve ring weight', 'range', 1, 6, 0.1],
+    ]},
+    { group: 'Generated Worlds', items: [
+      ['worldPlanets', 'Procedural worlds', 'range', 0, 1, 1],
+      ['worldRealistic', 'Realistic', 'range', 0, 100, 5],
+      ['worldCartoon', 'Cartoon', 'range', 0, 100, 5],
+      ['worldMagical', 'Magical', 'range', 0, 100, 5],
+      ['worldInk', 'Survey Ink', 'range', 0, 100, 5],
+      ['worldPixel', 'Pixel Age', 'range', 0, 100, 5],
+      ['worldAxis', 'Axis variation', 'range', 0, 1, 0.05],
     ]},
     { group: 'Hyperspace Conduits', items: [
       ['corridorW', 'Conduit width', 'range', 3, 14, 0.2],

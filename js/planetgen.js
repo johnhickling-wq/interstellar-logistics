@@ -1014,7 +1014,8 @@
   // ------------------------------------------------------ the world entire
   function drawWorld(ctx, spec, r, P, t, opts) {
     var maxTex = (opts && opts.maxTex) || 288;
-    var D = clamp(Math.round(2 * r), 48, maxTex);
+    var over = (opts && opts.oversample) || 1;   // for small-but-zoomable worlds
+    var D = clamp(Math.round(2 * r * over), 48, maxTex);
     var tex = ensureTexture(spec, D, P, opts && opts.budget);
     var u = (t * spec.spin) % 1;
     // axial lean: the surface, rings and moons tilt together; the

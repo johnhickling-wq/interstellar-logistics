@@ -38,6 +38,22 @@ The game is feature-complete and deployed via Netlify (static, no build):
   automatically) + HANDOFF.md (session state) + commit-per-milestone +
   `main` as the production branch.
 
+## Session 2026-07-09: the Planetary Works, in the game proper
+
+- `planets.html` + `js/planetgen.js` (procedural planet generator with
+  five mergeable style finishes) shipped and were merged to `main`
+  earlier in the session at the owner's request.
+- The game now draws every colony as a generated world (owner-approved
+  recipe: Realistic/Magical/Survey Ink in equal thirds, axis variation
+  100%). Integration lives in render.js (`ensureWorld`/`drawPlanet`);
+  recipe + toggle are theme keys under the "Generated Worlds" drawer.
+  Spawn variety guard: no archetype repeats within the last three
+  spawnings. Commons never have rings; designated colonies always do,
+  including when `transformColony` industrialises one in place.
+- Naming overlap to resolve someday: `patterns.html` is "The Pattern
+  Book" and the planets app's style-mixer drawer is also headed "THE
+  PATTERN BOOK — house finishes". Owner aware; rename offer open.
+
 ## Infra state
 
 - `main` exists on GitHub as the production branch, created from this

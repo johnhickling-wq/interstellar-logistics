@@ -632,10 +632,118 @@
   }
 
   // ------------------------------------------------------ colonies (planets)
+  // The Planetary Works (js/planetgen.js) supplies each colony's
+  // portrait. Style weights live in the theme, so the Drawing Office
+  // regrades the whole frontier live; specs are cached per colony and
+  // consecutive spawnings never repeat a recent archetype.
+  var worldMix = null, worldMixKey = '';
+  var worldBudget = { n: 0 };   // texture bakes allowed this frame
+  var recentArchs = [];
+
+  function worldStyleMix() {
+    var key = TH.worldRealistic + '|' + TH.worldCartoon + '|' +
+      TH.worldMagical + '|' + TH.worldInk + '|' + TH.worldPixel;
+    if (key !== worldMixKey) {
+      worldMixKey = key;
+      worldMix = CW.PlanetGen.mixStyles({
+        realistic: TH.worldRealistic, cartoon: TH.worldCartoon,
+        magical: TH.worldMagical, ink: TH.worldInk, pixel: TH.worldPixel,
+      });
+    }
+    return worldMix;
+  }
+
+  /* Fit a freshly forged world for colony duty. The game's visual
+     grammar stays in charge: designated colonies are ringed worlds and
+     commons are not, and moons keep close quarters so the reserve ring
+     and cargo yard retain their authority. */
+  function fitWorldForDuty(spec, special) {
+    if (special) {
+      if (!spec.rings) {
+        var wr = (CW.PlanetGen.hashSeed(spec.seed + ':ring') % 1000) / 1000;
+        spec.rings = {
+          tilt: (wr - 0.5) * 1.0,
+          squash: 0.22 + wr * 0.14,
+          r0: 1.45, r1: 1.85,
+          hue: spec.hue + (wr - 0.5) * 50,
+          sat: 0.3 + wr * 0.25,
+          bands: [
+            { p: 0.15, w: 0.7, a: 0.55 },
+            { p: 0.55, w: 1.0, a: 0.40 },
+            { p: 0.90, w: 0.5, a: 0.50 },
+          ],
+        };
+      } else {
+        spec.rings.r0 = Math.min(spec.rings.r0, 1.50);
+        spec.rings.r1 = Math.min(spec.rings.r1, 1.95);
+      }
+      if (spec.moons.length > 1) spec.moons.length = 1;
+      spec.moons.forEach(function (m) {
+        m.size = Math.min(m.size, 0.18);
+        m.dist = Math.max(spec.rings.r1 + 0.25,
+          Math.min(m.dist, spec.rings.r1 + 0.45));
+      });
+    } else {
+      spec.rings = null;
+      if (spec.moons.length > 2) spec.moons.length = 2;
+      spec.moons.forEach(function (m, i) {
+        m.size = Math.min(m.size, 0.20);
+        m.dist = Math.min(m.dist, 1.7 + i * 0.4);
+      });
+    }
+    var extent = 1.32;
+    if (spec.rings) extent = Math.max(extent, spec.rings.r1 + 0.12);
+    spec.moons.forEach(function (m) {
+      extent = Math.max(extent, m.dist + m.size + 0.08);
+    });
+    spec.extent = Math.min(extent, 3.1);
+  }
+
+  function ensureWorld(c, special) {
+    if (c._world && c._worldSpecial === special) return c._world;
+    if (c._world) {
+      // industrialised in place — the world earns (or loses) its rings
+      fitWorldForDuty(c._world, special);
+      c._worldSpecial = special;
+      return c._world;
+    }
+    var spec = null;
+    for (var k = 0; k < 9; k++) {
+      spec = CW.PlanetGen.generate('colony:' + c.id + ':' + ((Math.random() * 1e9) | 0));
+      if (recentArchs.indexOf(spec.arch) < 0) break;
+    }
+    recentArchs.push(spec.arch);
+    if (recentArchs.length > 3) recentArchs.shift();
+    fitWorldForDuty(spec, special);
+    c._world = spec;
+    c._worldSpecial = special;
+    return spec;
+  }
+
   function drawPlanet(c, R, bright, t) {
+    var special = !CW.TYPE_BY_ID[c.type].common;
+
+    if (TH.worldPlanets >= 0.5 && CW.PlanetGen) {
+      var spec = ensureWorld(c, special);
+      CW.PlanetGen.render(ctx, spec, c.x, c.y, R, worldStyleMix(), t, {
+        budget: worldBudget,
+        axis: TH.worldAxis,
+        oversample: 3,
+        maxTex: 144,
+      });
+      // reserves failing: the world goes dark, exactly as before
+      if (bright < 1) {
+        ctx.fillStyle = darkInk((1 - bright) * 0.6);
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+
+    // classic discs (worldPlanets = 0, or the Works module absent)
     var h = hashId(c.id);
     var tint = PLANET_TINTS[h % PLANET_TINTS.length];
-    var special = !CW.TYPE_BY_ID[c.type].common;
 
     // designated colonies are ringed worlds — the ring peeks out
     // behind the disc, drawn first so the planet occludes its middle
@@ -858,6 +966,7 @@
   CW.renderFrame = function (game, dt, wallT) {
     if (!ctx) return;
     syncTheme();
+    worldBudget.n = 2;   // world textures bake a couple per frame
     if (canvas.clientWidth !== W || canvas.clientHeight !== H) CW.resizeRenderer();
     updateCamera(game, dt);
     var t = wallT;
