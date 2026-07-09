@@ -139,7 +139,15 @@
     return 0.72 + 0.28 * Math.sin(t * 13 + id * 7.3) * Math.sin(t * 29 + id * 3.1);
   }
   function colonyRadius(c) {
-    return CW.TYPE_BY_ID[c.type].common ? SIZES.colonyR : SIZES.specialR;
+    var common = CW.TYPE_BY_ID[c.type].common;
+    var base = common ? SIZES.colonyR : SIZES.specialR;
+    // generated worlds vary in stature; the reserve ring, glyph and
+    // yard follow along (touch targets in input.js stay fixed)
+    if (TH.worldPlanets >= 0.5 && CW.PlanetGen) {
+      var spec = ensureWorld(c, !common);
+      return base * (1 + (spec.sizeF - 1) * TH.worldSizeVar);
+    }
+    return base;
   }
 
   // ------------------------------------------------------ background
@@ -494,11 +502,10 @@
   }
 
   /* The company freighter, top-down: pointed bridge section, container
-     spine amidships, engine block astern with a live exhaust. Cargo is
-     carried as visible parchment containers, six to the hull and six to
-     each towed pod barge. */
+     spine amidships, engine block astern with a live exhaust. Hull
+     cargo rides the consignment ring about the vessel; pod barges keep
+     six visible parchment containers each. */
   function drawShips(game, t) {
-    var cfg = CW.config;
     game.ships.forEach(function (ship) {
       var cor = ship.corridor;
       if (!cor || cor.path.length < 2) return;
@@ -596,15 +603,9 @@
       ctx.arc(L / 2 - 0.5, 0, 1.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // container bays: 2 × 3 on the hull spine
+      // hull cargo rides the consignment ring (drawn after the hull,
+      // unrotated); only the towed pod barges keep deck containers
       var cell = TH.cargoCell;
-      var hullSlots = Math.min(cfg.shipCapacity, 6);
-      for (var slot = 0; slot < hullSlots; slot++) {
-        var col = Math.floor(slot / 2), row = slot % 2;
-        var cx = L * 0.16 - 3.4 - col * (cell + 0.9);
-        var cy = row === 0 ? -Wd * 0.24 : Wd * 0.24;
-        drawContainer(cx, cy, cell, ship.cargo[slot]);
-      }
 
       // towed pod barges, 6 containers each — sized from the cell
       var bargeW = (cell + 0.9) * 3 + 1.5, bargeH = cell * 2 + 1.6;
@@ -628,7 +629,44 @@
         }
       }
       ctx.restore();
+
+      drawCargoRing(ship);
     });
+  }
+
+  /* The consignment ring: two faint concentric circles a short way off
+     the hull, divided into six berths — a sliced donut — with one
+     consignment riding in each. Drawn unrotated so the glyphs stay
+     upright while the vessel turns beneath them. */
+  function drawCargoRing(ship) {
+    var r0 = TH.cargoRingIn, r1 = TH.cargoRingIn + TH.cargoRingW;
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+    ctx.strokeStyle = alphaColor(PARCH, TH.cargoRingAlpha);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, r1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    for (var k = 0; k < 6; k++) {
+      var ba = (-120 + 60 * k) * Math.PI / 180;
+      ctx.moveTo(Math.cos(ba) * r0, Math.sin(ba) * r0);
+      ctx.lineTo(Math.cos(ba) * r1, Math.sin(ba) * r1);
+    }
+    ctx.stroke();
+    // consignments, one to a berth
+    var rm = (r0 + r1) / 2;
+    for (var s = 0; s < 6; s++) {
+      var crate = ship.cargo[s];
+      if (!crate) continue;
+      var ca = (-90 + 60 * s) * Math.PI / 180;
+      CW.drawGlyph(ctx, crate.type, Math.cos(ca) * rm, Math.sin(ca) * rm,
+        TH.cargoRingGlyph, 'solid', PARCH);
+    }
+    ctx.restore();
   }
 
   // ------------------------------------------------------ colonies (planets)
@@ -642,13 +680,17 @@
 
   function worldStyleMix() {
     var key = TH.worldRealistic + '|' + TH.worldCartoon + '|' +
-      TH.worldMagical + '|' + TH.worldInk + '|' + TH.worldPixel;
+      TH.worldMagical + '|' + TH.worldInk + '|' + TH.worldPixel +
+      '|' + TH.worldShimmer;
     if (key !== worldMixKey) {
       worldMixKey = key;
       worldMix = CW.PlanetGen.mixStyles({
         realistic: TH.worldRealistic, cartoon: TH.worldCartoon,
         magical: TH.worldMagical, ink: TH.worldInk, pixel: TH.worldPixel,
       });
+      // the route chart is dark and busy; let the enchantment carry
+      worldMix.glow = Math.min(1.3, worldMix.glow * TH.worldShimmer);
+      worldMix.sparkle = Math.min(1.3, worldMix.sparkle * TH.worldShimmer);
     }
     return worldMix;
   }
@@ -699,24 +741,44 @@
     spec.extent = Math.min(extent, 3.1);
   }
 
+  // Worlds are typecast: a colony's world must plausibly lack the very
+  // cargo it depends on — molten worlds thirst, gas colossi cannot
+  // farm, miasmic worlds cry out for medicine.
+  var TYPE_WORLDS = {
+    water: ['lava', 'desert', 'rock'],
+    food: ['gas', 'ice', 'toxic'],
+    energy: ['ice', 'ocean', 'terran'],
+    minerals: ['ocean', 'gas'],
+    machinery: ['terran', 'ocean'],
+    medicine: ['toxic'],
+    knowledge: ['rock', 'desert'],
+    culture: ['ice', 'rock'],
+    biology: ['exotic', 'lava'],
+    luxuries: ['desert', 'rock'],
+  };
+
   function ensureWorld(c, special) {
-    if (c._world && c._worldSpecial === special) return c._world;
-    if (c._world) {
-      // industrialised in place — the world earns (or loses) its rings
-      fitWorldForDuty(c._world, special);
-      c._worldSpecial = special;
-      return c._world;
+    // regenerate whenever the colony's need changes (industrialisation
+    // transforms a colony in place; its world must follow suit)
+    if (c._world && c._worldType === c.type) return c._world;
+    var choices = TYPE_WORLDS[c.type] || null;
+    var arch = null;
+    if (choices) {
+      var fresh = [];
+      for (var i = 0; i < choices.length; i++) {
+        if (recentArchs.indexOf(choices[i]) < 0) fresh.push(choices[i]);
+      }
+      var pool = fresh.length ? fresh : choices;
+      arch = pool[(Math.random() * pool.length) | 0];
     }
-    var spec = null;
-    for (var k = 0; k < 9; k++) {
-      spec = CW.PlanetGen.generate('colony:' + c.id + ':' + ((Math.random() * 1e9) | 0));
-      if (recentArchs.indexOf(spec.arch) < 0) break;
-    }
+    var spec = CW.PlanetGen.generate(
+      'colony:' + c.id + ':' + ((Math.random() * 1e9) | 0),
+      arch ? { arch: arch } : null);
     recentArchs.push(spec.arch);
     if (recentArchs.length > 3) recentArchs.shift();
     fitWorldForDuty(spec, special);
     c._world = spec;
-    c._worldSpecial = special;
+    c._worldType = c.type;
     return spec;
   }
 

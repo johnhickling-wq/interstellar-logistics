@@ -50,6 +50,12 @@ The game is feature-complete and deployed via Netlify (static, no build):
   Spawn variety guard: no archetype repeats within the last three
   spawnings. Commons never have rings; designated colonies always do,
   including when `transformColony` industrialises one in place.
+- Owner preview feedback, all addressed: worlds vary in stature
+  (`worldSizeVar`), the heavy small-radius outline is gone, shimmer is
+  boosted (`worldShimmer`), worlds are typecast to the cargo they lack
+  (`TYPE_WORLDS` in render.js), and hull cargo rides a six-berth
+  consignment ring around each vessel (`cargoRing*` theme keys; pod
+  barges keep their deck containers).
 - Naming overlap to resolve someday: `patterns.html` is "The Pattern
   Book" and the planets app's style-mixer drawer is also headed "THE
   PATTERN BOOK — house finishes". Owner aware; rename offer open.

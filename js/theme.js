@@ -69,6 +69,8 @@
     worldInk: 100,
     worldPixel: 0,
     worldAxis: 1.0,            // how much of each world's axial lean shows
+    worldSizeVar: 0.6,         // portion of each world's ±50% size shown
+    worldShimmer: 1.6,         // aura & sparkle boost on the route chart
 
     // Reserve rings & feedback
     ringGap: 7,
@@ -90,7 +92,11 @@
     shipTrim: 0.75,            // parchment trim stroke opacity
     exhaust: 1.0,              // engine flame intensity
     trailAlpha: 1.0,           // engine trail strength
-    cargoCell: 5.6,            // container size on deck
+    cargoCell: 5.6,            // container size on pod barges
+    cargoRingIn: 21,           // consignment ring inner radius
+    cargoRingW: 8,             // consignment ring depth
+    cargoRingGlyph: 4.6,       // consignment glyph size
+    cargoRingAlpha: 0.17,      // consignment ring ink
 
     // Miscellaneous
     crateR: 5.4,               // waiting-crate glyph size
@@ -180,6 +186,8 @@
       ['worldInk', 'Survey Ink', 'range', 0, 100, 5],
       ['worldPixel', 'Pixel Age', 'range', 0, 100, 5],
       ['worldAxis', 'Axis variation', 'range', 0, 1, 0.05],
+      ['worldSizeVar', 'Size variation', 'range', 0, 1, 0.05],
+      ['worldShimmer', 'Shimmer', 'range', 0, 3, 0.1],
     ]},
     { group: 'Hyperspace Conduits', items: [
       ['corridorW', 'Conduit width', 'range', 3, 14, 0.2],
@@ -197,7 +205,11 @@
       ['shipTrim', 'Trim brightness', 'range', 0, 1, 0.05],
       ['exhaust', 'Exhaust flame', 'range', 0, 3, 0.1],
       ['trailAlpha', 'Engine trail', 'range', 0, 3, 0.1],
-      ['cargoCell', 'Container size', 'range', 4, 7.5, 0.1],
+      ['cargoCell', 'Barge container size', 'range', 4, 7.5, 0.1],
+      ['cargoRingIn', 'Cargo ring radius', 'range', 12, 32, 0.5],
+      ['cargoRingW', 'Cargo ring depth', 'range', 4, 16, 0.5],
+      ['cargoRingGlyph', 'Cargo glyph size', 'range', 2.5, 8, 0.1],
+      ['cargoRingAlpha', 'Cargo ring ink', 'range', 0, 0.6, 0.01],
       ['crateR', 'Waiting-crate size', 'range', 3.5, 8, 0.1],
     ]},
   ];

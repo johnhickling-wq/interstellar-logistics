@@ -54,10 +54,14 @@ Planetary Works app (`planets.html`). Colonies are drawn as generated
 worlds: the renderer lazily attaches a spec to each colony (`c._world`),
 avoids repeating any archetype seen in the last three spawnings, strips
 rings from common colonies and guarantees them on designated ones
-("designated colonies are ringed worlds" stays true). Style weights and
-the axial-lean amount are theme keys (`world*` in THEME_DEFAULTS, the
-"Generated Worlds" drawer in design.html); `worldPlanets: 0` restores
-the classic tinted discs.
+("designated colonies are ringed worlds" stays true). Worlds are
+typecast to the cargo they lack (`TYPE_WORLDS` in render.js — molten
+worlds thirst, gas colossi cannot farm) and vary in stature with
+`spec.sizeF`. Style weights, axial lean, size variation and shimmer are
+theme keys (`world*` in THEME_DEFAULTS, the "Generated Worlds" drawer
+in design.html); `worldPlanets: 0` restores the classic tinted discs.
+Ship hull cargo rides the six-berth "consignment ring" around each
+vessel (`cargoRing*` theme keys); pod barges keep deck containers.
 
 **Two tunable layers, two hidden editor apps, two localStorage keys:**
 

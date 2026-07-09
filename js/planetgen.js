@@ -263,7 +263,7 @@
   }
 
   // ------------------------------------------------------ generate
-  function generate(seed) {
+  function generate(seed, opts) {
     var sd = (typeof seed === 'number' && isFinite(seed)) ? (seed >>> 0)
       : hashSeed(seed == null ? String(Math.random()) : seed);
     var rng = mulberry32(sd);
@@ -274,6 +274,13 @@
     for (var i = 0; i < ARCHS.length; i++) {
       pick -= ARCHS[i].w;
       if (pick <= 0) { arch = ARCHS[i]; break; }
+    }
+    // a commissioned archetype overrides the weighted draw (the game
+    // typecasts worlds to the cargo they lack)
+    if (opts && opts.arch) {
+      for (i = 0; i < ARCHS.length; i++) {
+        if (ARCHS[i].id === opts.arch) { arch = ARCHS[i]; break; }
+      }
     }
     var isGas = arch.id === 'gas';
 
@@ -927,7 +934,10 @@
 
   function drawOutline(ctx, spec, r, P) {
     if (P.outline <= 0.03) return;
-    var w = Math.max(1.2, r * 0.085 * P.outline);
+    // no minimum width: at small radii a floored outline reads as a
+    // heavy black ring, so a faint outline simply fades away instead
+    var w = r * 0.085 * P.outline;
+    if (w < 0.5) return;
     ctx.strokeStyle = outlineColour(spec, P);
     ctx.lineWidth = w;
     ctx.beginPath();
