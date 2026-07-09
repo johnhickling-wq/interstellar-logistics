@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1017">
+<title>The Planetary Works — Crump &amp; Wainwright</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="%230b1017" stroke="%23c9a227" stroke-width="3"/><circle cx="32" cy="30" r="12" fill="%2346587a" stroke="%23e9e0c9" stroke-width="1.5"/><ellipse cx="32" cy="32" rx="24" ry="7" fill="none" stroke="%23c9a227" stroke-width="2" transform="rotate(-16 32 32)"/></svg>'>
+<link rel="stylesheet" href="css/planets.css">
+</head>
+<body>
+
+<header id="pw-head">
+  <div id="pw-title">
+    <b>THE PLANETARY WORKS</b>
+    <span>CRUMP &amp; WAINWRIGHT · WORLDS MADE TO ORDER · EST. 1896</span>
+  </div>
+  <div id="pw-actions">
+    <button id="pw-new" class="pw-btn primary" title="Cast a fresh batch of worlds from a new seed">FORGE NEW WORLDS</button>
+    <button id="pw-motion" class="pw-btn active" title="Rotation, orbits and twinkling">MOTION</button>
+    <a class="pw-btn" href="design.html" title="The appearance studio">DRAWING OFFICE</a>
+    <a class="pw-btn" href="index.html" title="Open the game">TO THE TERMINAL →</a>
+  </div>
+</header>
+
+<main id="pw-main">
+  <section id="pw-floor">
+    <div id="pw-batchbar">
+      <span id="pw-batchno">BATCH Nº —</span>
+      <span class="pw-hint">Click a world to place it on the inspection bench.</span>
+    </div>
+    <div id="pw-gallery"></div>
+  </section>
+
+  <aside id="pw-panel">
+    <details class="pw-group" open>
+      <summary>THE INSPECTION BENCH</summary>
+      <div id="pw-bench">
+        <canvas id="pw-detail"></canvas>
+        <div id="pw-card">
+          <h3 id="pw-name">—</h3>
+          <div id="pw-desig" class="pw-sub">—</div>
+          <dl id="pw-stats">
+            <dt>Classification</dt><dd id="pw-class">—</dd>
+            <dt>Diameter</dt><dd id="pw-diam">—</dd>
+            <dt>Day length</dt><dd id="pw-day">—</dd>
+            <dt>Moons</dt><dd id="pw-moons">—</dd>
+            <dt>Rings</dt><dd id="pw-rings">—</dd>
+            <dt>Atmosphere</dt><dd id="pw-air">—</dd>
+          </dl>
+          <div id="pw-notes" class="pw-notes">—</div>
+          <div class="pw-row">
+            <button id="pw-reroll" class="pw-btn small" title="Melt this one down and cast another in its place">FORGE ANEW</button>
+            <button id="pw-copyspec" class="pw-btn small" title="Copy this world's full specification as JSON">COPY SPEC</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="pw-group" open>
+      <summary>THE PATTERN BOOK — house finishes</summary>
+      <div id="pw-mixer"></div>
+      <div id="pw-mixnote" class="pw-fineprint">—</div>
+      <div id="pw-presets"></div>
+      <div class="pw-fineprint">Finishes are mixed by weight, like paint. Two ladles of
+        Cartoon to one of Magical is a perfectly respectable order.</div>
+    </details>
+
+    <details class="pw-group" open>
+      <summary>THE FORGE — batch &amp; seed</summary>
+      <div class="pw-item">
+        <label>Worlds per batch</label>
+        <input type="range" id="pw-count" min="4" max="24" step="2" value="12">
+        <span class="pw-val" id="pw-count-val">12</span>
+      </div>
+      <div class="pw-item" title="How far each world may lean from the vertical. Every world has its own random lean; this sets how much of it shows.">
+        <label>Axis variation</label>
+        <input type="range" id="pw-axis" min="0" max="100" step="5" value="35">
+        <span class="pw-val" id="pw-axis-val">35%</span>
+      </div>
+      <div class="pw-item">
+        <label>Seed</label>
+        <input type="text" id="pw-seed" spellcheck="false" placeholder="e.g. basingstoke">
+        <button id="pw-useseed" class="pw-btn small">CAST</button>
+      </div>
+      <div class="pw-fineprint">The same seed and batch size cast the same worlds,
+        every time, on any machine. The finish is applied afterwards and may be
+        changed at leisure. Nothing here alters the gameplay.</div>
+    </details>
+  </aside>
+</main>
+
+<div id="pw-toast"></div>
+
+<script src="js/planetgen.js"></script>
+<script src="js/planetworks.js"></script>
+</body>
+</html>
