@@ -19,7 +19,9 @@ Zero dependencies, no build step, no test suite. Plain ES5-style JS in
 IIFEs sharing one global `CW` namespace, loaded via script tags.
 
 - Run: open `index.html` directly, or `python3 -m http.server 8000`.
-- The appearance studio is a second entry point: `design.html`.
+- Further standalone entry points: `design.html` (Drawing Office,
+  appearance studio), `patterns.html` (Pattern Book, asset-design
+  specimens), `planets.html` (Planetary Works, planet generator).
 - Deployed to Netlify as a plain static site (no build command).
 
 Verification is done by driving the real game headlessly with Playwright.
@@ -76,6 +78,14 @@ a grace hold (`graceHold`) while relief is due at the next stop.
 scripted showcase scene (frozen spawning via `spawn.next = Infinity`,
 `invincible`, reserves pinned each frame) — if you add a visual feature,
 make sure the showcase scene exhibits it.
+
+**Approved look (Pattern Book 2nd ed., owner's requisition, 2026-07-12):**
+corridors are the *Aurora Conduit* (breathing bidirectional ribbon — never
+add arrows, chevrons, particles or travelling pulses to a corridor);
+vessels are the *Packet* with cargo orbiting as parchment consignment
+chips; lettering is the *Typing Pool* (Courier for display and text).
+All tunable via theme keys; the relay beacon predates the Pattern Book
+and was deliberately kept.
 
 **Design invariants** (from the concept docs — do not break):
 - A colony never produces the cargo type it consumes.

@@ -294,55 +294,115 @@
     ctx.restore();
   }
 
-  /* A hyperspace conduit: soft field glow, twin containment rails with
-     a dark channel between them, and a slow pulse of energy travelling
-     the channel. Deliberately nothing like a metro line. */
-  function drawConduit(pts, loop, colour, t, active) {
+  // small value noise for the aurora's organic variation
+  function nHash(n) { var s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); }
+  function noise1(x) {
+    var i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
+    return nHash(i) * (1 - u) + nHash(i + 1) * u;
+  }
+
+  // arc-length samples along a (possibly closed) polyline:
+  // [{x, y, nx, ny}, …] every `step` world units, plus the total length
+  function samplePath(pts, loop, step) {
+    var P = loop ? pts.concat([pts[0]]) : pts;
+    var segs = [], len = 0;
+    for (var i = 1; i < P.length; i++) {
+      var dx = P[i].x - P[i - 1].x, dy = P[i].y - P[i - 1].y;
+      var l = Math.sqrt(dx * dx + dy * dy);
+      if (l < 0.001) continue;
+      segs.push({ x: P[i - 1].x, y: P[i - 1].y, dx: dx / l, dy: dy / l, l: l, d0: len });
+      len += l;
+    }
+    var out = [], si = 0;
+    for (var d = 0; d <= len; d += step) {
+      while (si < segs.length - 1 && d > segs[si].d0 + segs[si].l) si++;
+      var s = segs[si], u = d - s.d0;
+      out.push({ x: s.x + s.dx * u, y: s.y + s.dy * u, nx: -s.dy, ny: s.dx });
+    }
+    return { arr: out, len: len };
+  }
+
+  /* The Aurora Conduit (Pattern Book 2nd ed., No. 1): a translucent
+     ionised ribbon whose breadth wanders and breathes, lit in layers,
+     with internal shimmer and stationary twinkling sparkles. Strictly
+     bidirectional: nothing in the channel travels anywhere. */
+  function drawConduit(pts, loop, colour, t, active, seed) {
     if (pts.length < 2) return;
-    var outer = SIZES.corridorW;
+    var samp = samplePath(pts, loop, 6);
+    var arr = samp.arr, len = samp.len;
+    if (arr.length < 2) return;
+    var wBase = SIZES.corridorW;
+    var shim = TH.auroraShimmer;
+    var presence = active ? 1 : 0.45;
+    var i, p, q;
+
     ctx.save();
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.globalAlpha = active ? 1 : 0.55;
+    ctx.globalCompositeOperation = 'lighter';
 
-    // ambient field
-    ctx.strokeStyle = alphaColor(colour, Math.min(1, 0.10 * TH.conduitGlow));
-    ctx.lineWidth = outer * 2.4;
-    tracePath(pts, loop); ctx.stroke();
+    // three nested ribbons, each breathing to its own slow clock
+    [[1, 0.05, 3.1], [0.57, 0.085, 7.7], [0.28, 0.13, 12.9]].forEach(function (L, li) {
+      var breathe = 0.92 + 0.08 * Math.sin(t * 0.5 * shim + li * 1.7);
+      ctx.fillStyle = alphaColor(li === 2 ? mixHex(colour, PARCH, 0.25) : colour,
+        Math.min(1, L[1] * TH.conduitGlow * presence));
+      ctx.beginPath();
+      for (i = 0; i < arr.length; i++) {
+        p = arr[i];
+        var hw = wBase * L[0] * (0.55 + 0.5 * noise1(i * 0.096 + L[2] + t * 0.10 * shim)) * breathe + 0.3;
+        var px = p.x + p.nx * hw, py = p.y + p.ny * hw;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      for (i = arr.length - 1; i >= 0; i--) {
+        p = arr[i];
+        var hw2 = wBase * L[0] * (0.55 + 0.5 * noise1(i * 0.096 + L[2] + t * 0.10 * shim)) * breathe + 0.3;
+        ctx.lineTo(p.x - p.nx * hw2, p.y - p.ny * hw2);
+      }
+      ctx.closePath();
+      ctx.fill();
+    });
 
-    // rail body
-    ctx.strokeStyle = alphaColor(colour, 0.95);
-    ctx.lineWidth = outer;
-    tracePath(pts, loop); ctx.stroke();
-
-    // hollow the channel: leaves two thin rails
-    var hollow = Math.max(0, outer - TH.conduitHollow);
-    if (hollow > 0) {
-      ctx.strokeStyle = darkInk(0.93);
-      ctx.lineWidth = hollow;
-      tracePath(pts, loop); ctx.stroke();
-
-      // faint luminous interior
-      ctx.strokeStyle = alphaColor(colour, Math.min(1, 0.14 * TH.conduitGlow));
-      ctx.lineWidth = hollow;
-      tracePath(pts, loop); ctx.stroke();
+    // internal shimmer: slow luminous weather along the length, no travel
+    ctx.lineCap = 'butt';
+    ctx.lineWidth = Math.max(0.8, wBase * 0.12);
+    var shimCol = mixHex(colour, PARCH, 0.3);
+    for (i = 0; i < arr.length - 2; i += 2) {
+      p = arr[i]; q = arr[i + 2];
+      ctx.strokeStyle = alphaColor(shimCol,
+        (0.08 + 0.11 * noise1(i * 0.27 + t * 0.22 * shim)) * presence);
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
     }
 
-    if (active) {
-      // travelling energy pulses
-      ctx.setLineDash([TH.pulseLen, TH.pulseGap]);
-      ctx.lineDashOffset = -(t * TH.pulseSpeed) % (TH.pulseLen + TH.pulseGap);
-      ctx.strokeStyle = alphaColor(colour, TH.pulseAlpha);
-      ctx.lineWidth = 1.8;
-      tracePath(pts, loop); ctx.stroke();
-    } else {
-      // awaiting a vessel: a still, dashed survey line
-      ctx.setLineDash([6, 7]);
-      ctx.strokeStyle = alphaColor(colour, 0.5);
-      ctx.lineWidth = 1.4;
-      tracePath(pts, loop); ctx.stroke();
+    // stationary sparkles, each twinkling to its own clock (active lines only)
+    if (active && TH.auroraSparkle > 0) {
+      var count = Math.min(80, Math.round(len * TH.auroraSparkle / 40));
+      var lit = mixHex(colour, PARCH, 0.5);
+      for (i = 0; i < count; i++) {
+        var h1 = nHash(seed + i * 17.3), h2 = nHash(seed + i * 39.7 + 5);
+        var h3 = nHash(seed + i * 8.9 + 11), h4 = nHash(seed + i * 23.1 + 3);
+        var idx = Math.min(arr.length - 1, Math.floor(h1 * arr.length));
+        p = arr[idx];
+        var off = (h2 - 0.5) * wBase * 1.7;
+        var a = Math.pow(0.5 + 0.5 * Math.sin(t * (1 + h3 * 1.3) * shim + h4 * 6.28), 3) * 0.8;
+        if (a < 0.03) continue;
+        var sx = p.x + p.nx * off, sy = p.y + p.ny * off;
+        ctx.fillStyle = alphaColor(lit, a * 0.22);
+        ctx.beginPath(); ctx.arc(sx, sy, 2.4, 0, 6.29); ctx.fill();
+        ctx.fillStyle = alphaColor('#fff6e0', a);
+        ctx.beginPath(); ctx.arc(sx, sy, 0.7, 0, 6.29); ctx.fill();
+      }
     }
     ctx.restore();
+
+    // awaiting a vessel: a still, dashed survey line through the ribbon
+    if (!active) {
+      ctx.save();
+      ctx.setLineDash([6, 7]);
+      ctx.strokeStyle = alphaColor(colour, 0.5);
+      ctx.lineWidth = 1.3;
+      ctx.lineCap = 'round';
+      tracePath(pts, loop);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   function computeNubs(game) {
@@ -366,7 +426,7 @@
     game.corridors.forEach(function (cor) {
       if (drag && drag.corridor === cor) return; // preview drawn instead
       var colour = CW.CORRIDOR_COLOURS[cor.colourIdx].hex;
-      drawConduit(cor.path, cor.loop, colour, t, cor.ships.length > 0);
+      drawConduit(cor.path, cor.loop, colour, t, cor.ships.length > 0, hashId(cor.id) % 97);
     });
     // end nubs (grab handles): a dashed unfinished stub with a cap tick
     computeNubs(game);
@@ -449,7 +509,7 @@
   function drawDragPreview(game, drag, t) {
     var colour = CW.CORRIDOR_COLOURS[drag.colourIdx].hex;
     var pts = drag.renderStops || [];
-    if (pts.length >= 2) drawConduit(pts, drag.renderLoop, colour, t, true);
+    if (pts.length >= 2) drawConduit(pts, drag.renderLoop, colour, t, true, 7);
     (drag.elastics || []).forEach(function (e) {
       ctx.save();
       ctx.setLineDash([8, 7]);
@@ -475,34 +535,120 @@
     ctx.closePath();
   }
 
-  function drawContainer(cx, cy, cell, crate) {
-    if (crate) {
-      ctx.fillStyle = PARCH;
-      roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
-      ctx.fill();
-      CW.drawGlyph(ctx, crate.type, cx, cy, cell * 0.40, 'solid', darkInk(0.9));
-    } else {
-      // empty bay: a visible recessed slot
-      ctx.fillStyle = darkInk(0.45);
-      roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
-      ctx.fill();
-      ctx.strokeStyle = alphaColor(PARCH, 0.22);
-      ctx.lineWidth = 0.7;
-      roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.1);
-      ctx.stroke();
-    }
+  // a floating consignment chip: parchment, ink shadow, cargo glyph
+  function drawChip(cx, cy, cell, crate) {
+    ctx.fillStyle = darkInk(0.55);
+    roundRect(cx - cell / 2 + 0.7, cy - cell / 2 + 1.1, cell, cell, 1.3);
+    ctx.fill();
+    ctx.fillStyle = PARCH;
+    roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.3);
+    ctx.fill();
+    CW.drawGlyph(ctx, crate.type, cx, cy, cell * 0.40, 'solid', darkInk(0.9));
   }
 
-  /* The company freighter, top-down: pointed bridge section, container
-     spine amidships, engine block astern with a live exhaust. Cargo is
-     carried as visible parchment containers, six to the hull and six to
-     each towed pod barge. */
+  /* The Packet (Pattern Book 2nd ed., No. 2): a bluff-bowed workhorse
+     steamer — recessed holds, rubbing strakes, warm deck lamps, twin
+     engine glows. Her lading attends her in open orbit as parchment
+     consignment chips; each towed pod keeps its own small orbit. */
+  // like mix() but returns hex, so the result can be mixed again
+  function mixHex(hexA, hexB, f) {
+    var a = chan(hexA), b = chan(hexB);
+    function h2(v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }
+    return '#' + h2(a[0] + (b[0] - a[0]) * f) + h2(a[1] + (b[1] - a[1]) * f) + h2(a[2] + (b[2] - a[2]) * f);
+  }
+
+  function packetHull(L, Wd, colour, t, seed, moving) {
+    var base = mixHex('#454e5c', colour, TH.livery);
+    function hull() {
+      ctx.beginPath();
+      ctx.moveTo(L * 0.30, -Wd * 0.44);
+      ctx.quadraticCurveTo(L * 0.55, -Wd * 0.38, L * 0.55, 0);   // bluff bow
+      ctx.quadraticCurveTo(L * 0.55, Wd * 0.38, L * 0.30, Wd * 0.44);
+      ctx.lineTo(-L * 0.40, Wd * 0.44);
+      ctx.quadraticCurveTo(-L * 0.49, Wd * 0.40, -L * 0.49, 0);
+      ctx.quadraticCurveTo(-L * 0.49, -Wd * 0.40, -L * 0.40, -Wd * 0.44);
+      ctx.closePath();
+    }
+    // twin engine glows (under way only)
+    if (moving && TH.exhaust > 0) {
+      var f = 0.8 + 0.2 * Math.sin(t * 17 + seed) * Math.sin(t * 7.3 + seed);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      [-0.16, 0.16].forEach(function (oy, ei) {
+        var ex = -L * 0.52, ey = Wd * oy * 2.6;
+        var g = ctx.createRadialGradient(ex, ey, 0.3, ex, ey, 4.5 * TH.exhaust);
+        g.addColorStop(0, 'rgba(255,230,180,' + (0.55 * f).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(255,214,140,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(ex, ey, 4.5 * TH.exhaust, 0, 6.29); ctx.fill();
+      });
+      ctx.restore();
+    }
+    // soft ink shadow beneath, so she floats above the chart
+    ctx.save();
+    ctx.translate(1.1, 2);
+    ctx.fillStyle = darkInk(0.5);
+    hull(); ctx.fill();
+    ctx.restore();
+    // lit hull: gradient from the upper-left, like the planets
+    var g2 = ctx.createLinearGradient(-L * 0.15, -Wd * 0.6, L * 0.15, Wd * 0.6);
+    g2.addColorStop(0, mix(base, '#dfe8f2', 0.30));
+    g2.addColorStop(0.5, base);
+    g2.addColorStop(1, mix(base, '#05070b', 0.45));
+    ctx.fillStyle = g2;
+    hull(); ctx.fill();
+    ctx.strokeStyle = alphaColor(TH.brass, 0.45 * TH.shipTrim + 0.15);
+    ctx.lineWidth = 0.8;
+    hull(); ctx.stroke();
+    // rubbing strakes along the sides
+    ctx.strokeStyle = alphaColor(mixHex(base, '#05070b', 0.4), 0.8);
+    ctx.lineWidth = 1.1;
+    [-0.34, 0.34].forEach(function (yy) {
+      ctx.beginPath();
+      ctx.moveTo(L * 0.38, Wd * yy);
+      ctx.lineTo(-L * 0.42, Wd * yy);
+      ctx.stroke();
+    });
+    // recessed hold with two hatches
+    ctx.fillStyle = darkInk(0.42);
+    roundRect(-L * 0.3, -Wd * 0.24, L * 0.52, Wd * 0.48, 2);
+    ctx.fill();
+    ctx.strokeStyle = alphaColor(PARCH, 0.2);
+    ctx.lineWidth = 0.6;
+    [-L * 0.26, -0.5].forEach(function (hx) {
+      roundRect(hx, -Wd * 0.17, L * 0.2, Wd * 0.34, 1.3);
+      ctx.stroke();
+    });
+    // engine house astern
+    ctx.fillStyle = mix(base, '#05070b', 0.3);
+    roundRect(-L * 0.47, -Wd * 0.26, L * 0.13, Wd * 0.52, 1.6);
+    ctx.fill();
+    ctx.strokeStyle = alphaColor(TH.brass, 0.3);
+    roundRect(-L * 0.47, -Wd * 0.26, L * 0.13, Wd * 0.52, 1.6);
+    ctx.stroke();
+    // foremast with a working lamp, and a pair of deck lamps
+    ctx.strokeStyle = alphaColor(PARCH, 0.45);
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(L * 0.38, 0); ctx.lineTo(L * 0.47, 0); ctx.stroke();
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    [[L * 0.47, 0, 0.5], [-L * 0.36, 0, 0.35], [L * 0.32, 0, 0.3]].forEach(function (lp, li) {
+      var a = lp[2] * (0.75 + 0.25 * Math.sin(t * 2 + seed + li * 1.9));
+      ctx.fillStyle = 'rgba(255,217,160,' + (a * 0.4).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(lp[0], lp[1], 2.4, 0, 6.29); ctx.fill();
+      ctx.fillStyle = 'rgba(255,243,214,' + a.toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(lp[0], lp[1], 0.8, 0, 6.29); ctx.fill();
+    });
+    ctx.restore();
+  }
+
   function drawShips(game, t) {
     var cfg = CW.config;
     game.ships.forEach(function (ship) {
       var cor = ship.corridor;
       if (!cor || cor.path.length < 2) return;
       var colour = CW.CORRIDOR_COLOURS[cor.colourIdx].hex;
+      var seed = hashId(ship.id) % 89;
 
       // heading
       var n = cor.path.length;
@@ -511,9 +657,10 @@
         ship.angle = Math.atan2((p1.y - p0.y) * ship.dir, (p1.x - p0.x) * ship.dir);
       }
       var ang = ship.angle || 0;
+      var moving = ship.state === 'move';
 
       // engine trail
-      if (ship.trail && ship.trail.length > 1 && ship.state === 'move' && TH.trailAlpha > 0) {
+      if (ship.trail && ship.trail.length > 1 && moving && TH.trailAlpha > 0) {
         ctx.save();
         ctx.lineCap = 'round';
         for (var i = 1; i < ship.trail.length; i++) {
@@ -528,106 +675,91 @@
         ctx.restore();
       }
 
-      ctx.save();
-      ctx.translate(ship.x, ship.y);
-      ctx.rotate(ang);
-
       var L = TH.shipL, Wd = TH.shipW;
-      var hullDark = mix(colour, '#0a0e14', 0.45);
+      var cell = TH.cargoCell;
+      var R = L * 0.45 * TH.cargoOrbit;
 
-      // exhaust (only under way)
-      if (ship.state === 'move' && TH.exhaust > 0) {
-        var lick = (5 + 2.4 * Math.sin(t * 21 + ship.id * 3)) * TH.exhaust;
-        ctx.fillStyle = 'rgba(255,214,140,' + Math.min(1, 0.5 * TH.exhaust).toFixed(3) + ')';
-        [[-Wd * 0.22], [Wd * 0.22]].forEach(function (off) {
-          ctx.beginPath();
-          ctx.moveTo(-L / 2 - 0.5, off[0] - 1.6);
-          ctx.lineTo(-L / 2 - lick, off[0]);
-          ctx.lineTo(-L / 2 - 0.5, off[0] + 1.6);
-          ctx.closePath();
-          ctx.fill();
+      /* one station in the carousel: crates keep their slot so nothing
+         shuffles when cargo is worked. Orbit lies in the chart plane
+         (screen space), unrotated by the vessel's heading. */
+      function slotPos(centreX, centreY, slot, total, radius, phase) {
+        var ph = t * 0.8 * TH.cargoPace + phase + slot * Math.PI * 2 / Math.max(1, total);
+        return {
+          x: centreX + Math.cos(ph) * radius,
+          y: centreY + Math.sin(ph) * radius * 0.34,
+          front: Math.sin(ph) >= 0,
+          scale: 0.82 + 0.24 * Math.max(0, Math.sin(ph)),
+        };
+      }
+      function orbitRing(centreX, centreY, radius) {
+        if (TH.orbitLine <= 0.02) return;
+        ctx.save();
+        ctx.setLineDash([2, 4.5]);
+        ctx.strokeStyle = alphaColor(colour, 0.3 * TH.orbitLine);
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.ellipse(centreX, centreY, radius, radius * 0.34, 0, 0, 6.29);
+        ctx.stroke();
+        ctx.restore();
+      }
+      function drawBody(x, y, bodyL, bodyW) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(ang);
+        packetHull(bodyL, bodyW, colour, t, seed, moving);
+        ctx.restore();
+      }
+      // gather slots: [centreX, centreY, radius, slotIdx, total, crate, size]
+      function paradeGround(centreX, centreY, radius, first, total, size, phase) {
+        var out = [];
+        for (var s = 0; s < total; s++) {
+          var crate = ship.cargo[first + s];
+          if (!crate) continue;
+          var p = slotPos(centreX, centreY, s, total, radius, phase);
+          out.push({ p: p, crate: crate, size: size });
+        }
+        return out;
+      }
+      function drawCrates(list, front) {
+        list.forEach(function (e) {
+          if (e.p.front !== front) return;
+          ctx.save();
+          if (!front) ctx.globalAlpha = 0.6;
+          drawChip(e.p.x, e.p.y, e.size * e.p.scale, e.crate);
+          ctx.restore();
         });
       }
 
-      // hull — ink underlay then colour, with a fine parchment trim so
-      // the vessel never camouflages against its own conduit
-      function hullPath(grow) {
-        var g2 = grow || 0;
+      // pods trail astern along the heading, each with its own orbit
+      var podL = L * 0.45, podR = R * 0.55;
+      var podStep = Math.max(podL + 8, podR * 1.7);
+      var hx = Math.cos(ang), hy = Math.sin(ang);
+      for (var pd = ship.pods - 1; pd >= 0; pd--) {
+        var dist = L * 0.62 + podStep * (pd + 1) - podL * 0.35;
+        var px = ship.x - hx * dist, py = ship.y - hy * dist;
+        // tow line back to the vessel ahead
+        var ax = ship.x - hx * (pd === 0 ? L * 0.49 : (L * 0.62 + podStep * pd - podL * 0.35 + podL * 0.49));
+        var ay = ship.y - hy * (pd === 0 ? L * 0.49 : (L * 0.62 + podStep * pd - podL * 0.35 + podL * 0.49));
+        ctx.strokeStyle = alphaColor(TH.brass, 0.4);
+        ctx.lineWidth = 0.9;
         ctx.beginPath();
-        ctx.moveTo(L / 2 + 5 + g2, 0);                        // bow tip
-        ctx.lineTo(L / 2 - 3, -Wd * 0.34 - g2);               // bridge taper
-        ctx.lineTo(L * 0.16, -Wd * 0.5 - g2);
-        ctx.lineTo(-L / 2 + 3.5, -Wd * 0.5 - g2);             // spine
-        ctx.lineTo(-L / 2 - g2, -Wd * 0.30);                  // stern notch
-        ctx.lineTo(-L / 2 - g2, Wd * 0.30);
-        ctx.lineTo(-L / 2 + 3.5, Wd * 0.5 + g2);
-        ctx.lineTo(L * 0.16, Wd * 0.5 + g2);
-        ctx.lineTo(L / 2 - 3, Wd * 0.34 + g2);
-        ctx.closePath();
-      }
-      ctx.fillStyle = darkInk(0.75);
-      hullPath(1.6);
-      ctx.fill();
-      ctx.fillStyle = colour;
-      hullPath(0);
-      ctx.fill();
-      ctx.strokeStyle = alphaColor(PARCH, TH.shipTrim);
-      ctx.lineWidth = 0.9;
-      hullPath(0);
-      ctx.stroke();
-
-      // stern fins
-      ctx.fillStyle = hullDark;
-      ctx.beginPath();
-      ctx.moveTo(-L / 2 + 5, -Wd * 0.5); ctx.lineTo(-L / 2 + 1, -Wd * 0.82);
-      ctx.lineTo(-L / 2 + 1.6, -Wd * 0.45);
-      ctx.closePath(); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-L / 2 + 5, Wd * 0.5); ctx.lineTo(-L / 2 + 1, Wd * 0.82);
-      ctx.lineTo(-L / 2 + 1.6, Wd * 0.45);
-      ctx.closePath(); ctx.fill();
-
-      // engine block + bridge light
-      ctx.fillStyle = hullDark;
-      roundRect(-L / 2 - 0.5, -Wd * 0.3, 3.4, Wd * 0.6, 1);
-      ctx.fill();
-      ctx.fillStyle = alphaColor(PARCH, 0.9);
-      ctx.beginPath();
-      ctx.arc(L / 2 - 0.5, 0, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // container bays: 2 × 3 on the hull spine
-      var cell = TH.cargoCell;
-      var hullSlots = Math.min(cfg.shipCapacity, 6);
-      for (var slot = 0; slot < hullSlots; slot++) {
-        var col = Math.floor(slot / 2), row = slot % 2;
-        var cx = L * 0.16 - 3.4 - col * (cell + 0.9);
-        var cy = row === 0 ? -Wd * 0.24 : Wd * 0.24;
-        drawContainer(cx, cy, cell, ship.cargo[slot]);
-      }
-
-      // towed pod barges, 6 containers each — sized from the cell
-      var bargeW = (cell + 0.9) * 3 + 1.5, bargeH = cell * 2 + 1.6;
-      for (var pd = 0; pd < ship.pods; pd++) {
-        var bx = -L / 2 - 5 - pd * (bargeW + 2.5);   // barge centre x
-        // coupling
-        ctx.strokeStyle = alphaColor(colour, 0.7);
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(bx + bargeW / 2, 0);
-        ctx.lineTo(bx + bargeW / 2 + 3.5, 0);
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo((ax + px + hx * podL * 0.5) / 2, (ay + py + hy * podL * 0.5) / 2 + 2.5,
+          px + hx * podL * 0.52, py + hy * podL * 0.52);
         ctx.stroke();
-        ctx.fillStyle = mix(colour, '#0a0e14', 0.25);
-        roundRect(bx - bargeW / 2, -bargeH / 2, bargeW, bargeH, 2);
-        ctx.fill();
-        for (var ps = 0; ps < 6; ps++) {
-          var pcol = Math.floor(ps / 2), prow = ps % 2;
-          var pcx = bx + bargeW / 2 - cell / 2 - 1.3 - pcol * (cell + 0.8);
-          var pcy = (prow === 0 ? -1 : 1) * (cell / 2 + 0.3);
-          drawContainer(pcx, pcy, cell - 0.4, ship.cargo[6 + pd * 6 + ps]);
-        }
+        var podCrates = paradeGround(px, py, podR, 6 + pd * 6, 6, cell * 0.85, 2.1 + pd);
+        orbitRing(px, py, podR);
+        drawCrates(podCrates, false);
+        drawBody(px, py, podL, Wd * 0.55);
+        drawCrates(podCrates, true);
       }
-      ctx.restore();
+
+      // the vessel herself
+      var hullCrates = paradeGround(ship.x, ship.y, R, 0, Math.min(cfg.shipCapacity, 6), cell, seed);
+      orbitRing(ship.x, ship.y, R);
+      drawCrates(hullCrates, false);
+      drawBody(ship.x, ship.y, L, Wd);
+      drawCrates(hullCrates, true);
     });
   }
 

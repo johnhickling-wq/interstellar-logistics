@@ -64,29 +64,31 @@
     ringGap: 7,
     ringWidth: 2.6,
 
-    // Hyperspace conduits
-    corridorW: 7.2,
-    conduitGlow: 1.0,          // ambient field + interior light
-    conduitHollow: 3,          // channel inset (bigger = thinner rails)
-    pulseLen: 3,               // travelling energy pulse length
-    pulseGap: 13,
-    pulseSpeed: 26,
-    pulseAlpha: 0.55,
+    // Hyperspace conduits — the Aurora Conduit (Pattern Book 2nd ed., No. 1)
+    corridorW: 8.3,            // ribbon half-breadth
+    conduitGlow: 3.0,          // layered ribbon luminosity
+    auroraShimmer: 3.0,        // internal weather & twinkle speed
+    auroraSparkle: 2.5,        // sparkles per span
     relayScale: 1.0,
 
-    // Vessels
+    // Vessels — the Packet (Pattern Book 2nd ed., No. 2)
     shipL: 30,
     shipW: 11,
-    shipTrim: 0.75,            // parchment trim stroke opacity
-    exhaust: 1.0,              // engine flame intensity
+    shipTrim: 0.75,            // brass trim stroke opacity
+    exhaust: 2.0,              // engine glow intensity
     trailAlpha: 1.0,           // engine trail strength
-    cargoCell: 5.6,            // container size on deck
+    cargoCell: 4.6,            // orbiting consignment chip size
+    cargoOrbit: 1.65,          // orbit radius as a factor of hull length
+    cargoPace: 0.55,           // orbital period factor
+    orbitLine: 1.0,            // visibility of the dashed orbit path
+    livery: 1.0,               // hull finish: 0 bare steel, 1 full paint
 
     // Miscellaneous
     crateR: 5.4,               // waiting-crate glyph size
 
-    // Lettering (HUD & memoranda)
-    uiFont: 'iowan',
+    // Lettering (HUD & memoranda) — the Typing Pool (Pattern Book 2nd ed.)
+    uiFont: 'courier',
+    uiFontBody: 'courier',
   };
 
   CW.THEME_FONTS = {
@@ -111,7 +113,8 @@
       ['amber', 'Caution amber', 'color'],
       ['red', 'Distress red', 'color'],
       ['starColour', 'Starlight', 'color'],
-      ['uiFont', 'Lettering', 'font'],
+      ['uiFont', 'Display lettering', 'font'],
+      ['uiFontBody', 'Text lettering', 'font'],
     ]},
     { group: 'Corridor Livery', items: [
       ['corridor0', 'Brass', 'color'],
@@ -163,22 +166,23 @@
       ['ringWidth', 'Reserve ring weight', 'range', 1, 6, 0.1],
     ]},
     { group: 'Hyperspace Conduits', items: [
-      ['corridorW', 'Conduit width', 'range', 3, 14, 0.2],
-      ['conduitGlow', 'Field glow', 'range', 0, 3, 0.1],
-      ['conduitHollow', 'Channel hollow', 'range', 0, 8, 0.2],
-      ['pulseLen', 'Pulse length', 'range', 1, 12, 0.5],
-      ['pulseGap', 'Pulse spacing', 'range', 4, 40, 1],
-      ['pulseSpeed', 'Pulse speed', 'range', 0, 90, 2],
-      ['pulseAlpha', 'Pulse brightness', 'range', 0, 1, 0.05],
+      ['corridorW', 'Ribbon breadth', 'range', 3, 16, 0.2],
+      ['conduitGlow', 'Ribbon glow', 'range', 0, 4, 0.1],
+      ['auroraShimmer', 'Shimmer', 'range', 0, 4, 0.1],
+      ['auroraSparkle', 'Sparkles', 'range', 0, 5, 0.1],
       ['relayScale', 'Relay beacon size', 'range', 0.5, 2, 0.05],
     ]},
     { group: 'Vessels', items: [
       ['shipL', 'Hull length', 'range', 18, 48, 1],
       ['shipW', 'Hull beam', 'range', 7, 18, 0.5],
       ['shipTrim', 'Trim brightness', 'range', 0, 1, 0.05],
-      ['exhaust', 'Exhaust flame', 'range', 0, 3, 0.1],
+      ['exhaust', 'Engine glow', 'range', 0, 3, 0.1],
       ['trailAlpha', 'Engine trail', 'range', 0, 3, 0.1],
-      ['cargoCell', 'Container size', 'range', 4, 7.5, 0.1],
+      ['cargoCell', 'Consignment chip size', 'range', 3, 7.5, 0.1],
+      ['cargoOrbit', 'Cargo orbit radius', 'range', 0.6, 2.2, 0.05],
+      ['cargoPace', 'Cargo orbit pace', 'range', 0, 2.5, 0.05],
+      ['orbitLine', 'Orbit path line', 'range', 0, 1, 0.05],
+      ['livery', 'Livery (steel → paint)', 'range', 0, 1, 0.05],
       ['crateR', 'Waiting-crate size', 'range', 3.5, 8, 0.1],
     ]},
   ];
@@ -211,7 +215,7 @@
       planet3: '#6e4e48', planet4: '#5a5f46', planet5: '#645648',
       planet6: '#70603e', planet7: '#5e5648',
       nebulaHueShift: 160, nebulaSat: 0.55, vignette: 1.4,
-      halo: 1.5, uiFont: 'palatino',
+      halo: 1.5, uiFont: 'palatino', uiFontBody: 'system',
     },
     'Signal Room': {
       ink: '#06110b', inkRaise: '#0a1b12', parch: '#c8ecd2',
@@ -224,7 +228,7 @@
       planet3: '#28513e', planet4: '#356045', planet5: '#2f5748',
       planet6: '#3a6040', planet7: '#2b523e',
       nebulaHueShift: -80, gridOpacity: 1.6, uiFont: 'courier',
-      starBrightness: 0.6, pulseSpeed: 42, pulseAlpha: 0.75,
+      starBrightness: 0.6,
     },
   };
 
@@ -294,6 +298,8 @@
     var font = CW.THEME_FONTS[th.uiFont] || CW.THEME_FONTS.iowan;
     root.setProperty('--serif', font.stack);
     CW.themeFont = font.stack;
+    var fontBody = CW.THEME_FONTS[th.uiFontBody] || CW.THEME_FONTS.system;
+    root.setProperty('--sans', fontBody.stack);
     for (var i = 0; i < CW.CORRIDOR_COLOURS.length; i++) {
       CW.CORRIDOR_COLOURS[i].hex = th['corridor' + i];
     }

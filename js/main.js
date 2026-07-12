@@ -4,7 +4,7 @@
   window.CW = window.CW || {};
 
   // Refresh by hand whenever a change is pushed — there is no build step.
-  CW.BUILD = '2026-07-07 09:04 UTC';
+  CW.BUILD = '2026-07-12 08:20 UTC';
 
   var canvas;
   var lastT = 0;
