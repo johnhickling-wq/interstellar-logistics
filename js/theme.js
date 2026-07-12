@@ -64,12 +64,13 @@
     ringGap: 7,
     ringWidth: 2.6,
 
-    // Hyperspace conduits — the Aurora Conduit (Pattern Book 2nd ed., No. 1)
-    corridorW: 8.3,            // ribbon half-breadth
-    conduitGlow: 3.0,          // layered ribbon luminosity
-    auroraShimmer: 3.0,        // internal weather & twinkle speed
-    auroraSparkle: 2.5,        // sparkles per span
-    relayScale: 1.0,
+    // Hyperspace conduits — the Aurora Conduit (Pattern Book 2nd ed., No. 1;
+    // values as filed by the owner from the Drawing Office, 2026-07-12)
+    corridorW: 6.4,            // ribbon half-breadth
+    conduitGlow: 2.4,          // layered ribbon luminosity
+    auroraShimmer: 4.0,        // internal weather & twinkle speed
+    auroraSparkle: 5.0,        // sparkles per span
+    relayScale: 1.55,
 
     // Vessels — the Packet (Pattern Book 2nd ed., No. 2)
     shipL: 30,
