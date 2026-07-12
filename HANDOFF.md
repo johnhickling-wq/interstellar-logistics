@@ -38,6 +38,51 @@ The game is feature-complete and deployed via Netlify (static, no build):
   automatically) + HANDOFF.md (session state) + commit-per-milestone +
   `main` as the production branch.
 
+## Session 2026-07-09: the Planetary Works, in the game proper
+
+- `planets.html` + `js/planetgen.js` (procedural planet generator with
+  five mergeable style finishes) shipped and were merged to `main`
+  earlier in the session at the owner's request.
+- The game now draws every colony as a generated world (owner-approved
+  recipe: Realistic/Magical/Survey Ink in equal thirds, axis variation
+  100%). Integration lives in render.js (`ensureWorld`/`drawPlanet`);
+  recipe + toggle are theme keys under the "Generated Worlds" drawer.
+  Spawn variety guard: no archetype repeats within the last three
+  spawnings. Commons never have rings; designated colonies always do,
+  including when `transformColony` industrialises one in place.
+- The Tuning Office (in-game settings cog) gained a "Chart Appearance"
+  section: planet band inner/outer radius + line & gauge weights, ship
+  ring inner/outer radius + line weight, cargo icon sizes and weight.
+  These edit CW.theme (auto-filed to cw_theme_v1, debounced), ranges
+  single-sourced from THEME_SCHEMA. Ship and planet donuts now have
+  separate geometry keys (shipRing* / band*, replacing cargoRing In/W);
+  cargoBold strokes solid glyphs outward for "weight".
+- Second round of preview feedback: the consignment ring sits further
+  out (cargoRingIn 24) and every colony now wears an identical freight
+  band — two faint lines, waiting crates adrift and evenly spaced
+  between them, the outer line doubling as the reserve/distress gauge
+  (ringGap is retired from the schema, kept in defaults for saved-theme
+  compat). Colony glyphs are thinner (glyphLine 1.9).
+- Owner preview feedback, all addressed: worlds vary in stature
+  (`worldSizeVar`), the heavy small-radius outline is gone, shimmer is
+  boosted (`worldShimmer`), worlds are typecast to the cargo they lack
+  (`TYPE_WORLDS` in render.js), and hull cargo rides a six-berth
+  consignment ring around each vessel (`cargoRing*` theme keys; pod
+  barges keep their deck containers).
+- MERGE NOTE (2026-07-12): this session's branch and the Pattern Book
+  session both restyled ship cargo in parallel — orbiting parchment
+  chips (theirs) vs the six-berth consignment ring (owner's explicit
+  spec to this session). Resolved by keeping the Aurora Conduit, the
+  Packet hull/livery, mini-Packet pods with tow lines and the Typing
+  Pool lettering from the Pattern Book work, while ALL cargo rides
+  consignment rings: full-size on hulls, 0.55-scale on pods. The
+  cargoCell/cargoOrbit/cargoPace/orbitLine keys were retired with the
+  chip carousel; livery stays. If the owner prefers orbiting chips
+  after all, the carousel code lives in main's history at ee21cf5.
+- Naming overlap to resolve someday: `patterns.html` is "The Pattern
+  Book" and the planets app's style-mixer drawer is also headed "THE
+  PATTERN BOOK — house finishes". Owner aware; rename offer open.
+
 ## Infra state
 
 - `main` exists on GitHub as the production branch, created from this

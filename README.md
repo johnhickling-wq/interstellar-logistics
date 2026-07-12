@@ -149,8 +149,15 @@ a few named blends.
 
 The engine lives in `js/planetgen.js` (`CW.PlanetGen`): `generate(seed)`
 returns a serialisable spec; `render(ctx, spec, x, y, r, styleMix, t)`
-paints it anywhere. It touches no DOM and no game state, so it can be
-lifted into the game renderer whole when the time comes.
+paints it anywhere.
+
+**The game itself now draws every colony as a generated world.** Each
+newly chartered colony receives a fresh spec (never repeating an
+archetype seen in the last three spawnings), commons go ringless, and
+designated colonies are always ringed worlds, as the house grammar
+demands. The style recipe — Realistic, Magical and Survey Ink in equal
+thirds, full axis variation — plus a `worldPlanets` off-switch live in
+the theme, under the Drawing Office's **Generated Worlds** drawer.
 
 ## Architecture
 
@@ -161,7 +168,7 @@ lifted into the game renderer whole when the time comes.
 | `js/copy.js`   | the company voice: names, memos, manifest quips |
 | `js/glyphs.js` | the ten cargo glyphs as canvas vector paths |
 | `js/sim.js`    | the entire simulation — colonies, crates, corridors, ships, routing (multi-source BFS per cargo type), starvation, spawning, weekly reviews |
-| `js/render.js` | canvas renderer: survey grid, hatched nebula hazards, stylised planets, twin-rail conduits, container freighters, reserve rings, distress telegraphing |
+| `js/render.js` | canvas renderer: survey grid, hatched nebula hazards, stylised planets, twin-rail conduits, freighters with six-berth consignment rings, reserve rings, distress telegraphing |
 | `js/input.js`  | pointer gestures for corridor editing (mouse + touch) |
 | `js/ui.js`     | HUD, memoranda, Ship's Manifest, toasts, tooltip |
 | `js/devpanel.js` | the Tuning Office |

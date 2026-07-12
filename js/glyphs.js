@@ -176,8 +176,9 @@
 
   /* Draw a glyph.
      mode 'outline' -> colony node (stroked)
-     mode 'solid'   -> crate (filled, evenodd so holes read)          */
-  CW.drawGlyph = function (ctx, typeId, x, y, r, mode, style) {
+     mode 'solid'   -> crate (filled, evenodd so holes read); optional
+                       bold strokes the fill outward to fatten it      */
+  CW.drawGlyph = function (ctx, typeId, x, y, r, mode, style, bold) {
     var fn = P[typeId];
     if (typeId === 'food' && mode !== 'solid') fn = P.foodLines;
     if (!fn) return;
@@ -188,6 +189,12 @@
     if (mode === 'solid') {
       ctx.fillStyle = style;
       ctx.fill('evenodd');
+      if (bold > 0) {
+        ctx.strokeStyle = style;
+        ctx.lineWidth = bold;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
     } else {
       ctx.strokeStyle = style;
       ctx.lineJoin = 'round';

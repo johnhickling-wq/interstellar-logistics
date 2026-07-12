@@ -139,7 +139,15 @@
     return 0.72 + 0.28 * Math.sin(t * 13 + id * 7.3) * Math.sin(t * 29 + id * 3.1);
   }
   function colonyRadius(c) {
-    return CW.TYPE_BY_ID[c.type].common ? SIZES.colonyR : SIZES.specialR;
+    var common = CW.TYPE_BY_ID[c.type].common;
+    var base = common ? SIZES.colonyR : SIZES.specialR;
+    // generated worlds vary in stature; the reserve ring, glyph and
+    // yard follow along (touch targets in input.js stay fixed)
+    if (TH.worldPlanets >= 0.5 && CW.PlanetGen) {
+      var spec = ensureWorld(c, !common);
+      return base * (1 + (spec.sizeF - 1) * TH.worldSizeVar);
+    }
+    return base;
   }
 
   // ------------------------------------------------------ background
@@ -535,17 +543,6 @@
     ctx.closePath();
   }
 
-  // a floating consignment chip: parchment, ink shadow, cargo glyph
-  function drawChip(cx, cy, cell, crate) {
-    ctx.fillStyle = darkInk(0.55);
-    roundRect(cx - cell / 2 + 0.7, cy - cell / 2 + 1.1, cell, cell, 1.3);
-    ctx.fill();
-    ctx.fillStyle = PARCH;
-    roundRect(cx - cell / 2, cy - cell / 2, cell, cell, 1.3);
-    ctx.fill();
-    CW.drawGlyph(ctx, crate.type, cx, cy, cell * 0.40, 'solid', darkInk(0.9));
-  }
-
   /* The Packet (Pattern Book 2nd ed., No. 2): a bluff-bowed workhorse
      steamer — recessed holds, rubbing strakes, warm deck lamps, twin
      engine glows. Her lading attends her in open orbit as parchment
@@ -643,7 +640,6 @@
   }
 
   function drawShips(game, t) {
-    var cfg = CW.config;
     game.ships.forEach(function (ship) {
       var cor = ship.corridor;
       if (!cor || cor.path.length < 2) return;
@@ -676,32 +672,7 @@
       }
 
       var L = TH.shipL, Wd = TH.shipW;
-      var cell = TH.cargoCell;
-      var R = L * 0.45 * TH.cargoOrbit;
 
-      /* one station in the carousel: crates keep their slot so nothing
-         shuffles when cargo is worked. Orbit lies in the chart plane
-         (screen space), unrotated by the vessel's heading. */
-      function slotPos(centreX, centreY, slot, total, radius, phase) {
-        var ph = t * 0.8 * TH.cargoPace + phase + slot * Math.PI * 2 / Math.max(1, total);
-        return {
-          x: centreX + Math.cos(ph) * radius,
-          y: centreY + Math.sin(ph) * radius * 0.34,
-          front: Math.sin(ph) >= 0,
-          scale: 0.82 + 0.24 * Math.max(0, Math.sin(ph)),
-        };
-      }
-      function orbitRing(centreX, centreY, radius) {
-        if (TH.orbitLine <= 0.02) return;
-        ctx.save();
-        ctx.setLineDash([2, 4.5]);
-        ctx.strokeStyle = alphaColor(colour, 0.3 * TH.orbitLine);
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.ellipse(centreX, centreY, radius, radius * 0.34, 0, 0, 6.29);
-        ctx.stroke();
-        ctx.restore();
-      }
       function drawBody(x, y, bodyL, bodyW) {
         ctx.save();
         ctx.translate(x, y);
@@ -709,30 +680,12 @@
         packetHull(bodyL, bodyW, colour, t, seed, moving);
         ctx.restore();
       }
-      // gather slots: [centreX, centreY, radius, slotIdx, total, crate, size]
-      function paradeGround(centreX, centreY, radius, first, total, size, phase) {
-        var out = [];
-        for (var s = 0; s < total; s++) {
-          var crate = ship.cargo[first + s];
-          if (!crate) continue;
-          var p = slotPos(centreX, centreY, s, total, radius, phase);
-          out.push({ p: p, crate: crate, size: size });
-        }
-        return out;
-      }
-      function drawCrates(list, front) {
-        list.forEach(function (e) {
-          if (e.p.front !== front) return;
-          ctx.save();
-          if (!front) ctx.globalAlpha = 0.6;
-          drawChip(e.p.x, e.p.y, e.size * e.p.scale, e.crate);
-          ctx.restore();
-        });
-      }
 
-      // pods trail astern along the heading, each with its own orbit
-      var podL = L * 0.45, podR = R * 0.55;
-      var podStep = Math.max(podL + 8, podR * 1.7);
+      // pods trail astern along the heading, each wearing a smaller
+      // consignment ring of its own
+      var podL = L * 0.45, podScale = 0.55;
+      var podRingOut = Math.max(TH.shipRingOut, TH.shipRingIn + 2) * podScale;
+      var podStep = Math.max(podL + 8, podRingOut * 1.6);
       var hx = Math.cos(ang), hy = Math.sin(ang);
       for (var pd = ship.pods - 1; pd >= 0; pd--) {
         var dist = L * 0.62 + podStep * (pd + 1) - podL * 0.35;
@@ -747,27 +700,190 @@
         ctx.quadraticCurveTo((ax + px + hx * podL * 0.5) / 2, (ay + py + hy * podL * 0.5) / 2 + 2.5,
           px + hx * podL * 0.52, py + hy * podL * 0.52);
         ctx.stroke();
-        var podCrates = paradeGround(px, py, podR, 6 + pd * 6, 6, cell * 0.85, 2.1 + pd);
-        orbitRing(px, py, podR);
-        drawCrates(podCrates, false);
         drawBody(px, py, podL, Wd * 0.55);
-        drawCrates(podCrates, true);
+        drawCargoRing(px, py, podScale, ship.cargo, 6 + pd * 6);
       }
 
-      // the vessel herself
-      var hullCrates = paradeGround(ship.x, ship.y, R, 0, Math.min(cfg.shipCapacity, 6), cell, seed);
-      orbitRing(ship.x, ship.y, R);
-      drawCrates(hullCrates, false);
+      // the vessel herself, and her six-berth consignment ring
       drawBody(ship.x, ship.y, L, Wd);
-      drawCrates(hullCrates, true);
+      drawCargoRing(ship.x, ship.y, 1, ship.cargo, 0);
     });
   }
 
+  /* The consignment ring: two faint concentric circles a short way off
+     the hull, divided into six berths — a sliced donut — with one
+     consignment riding in each. Drawn unrotated so the glyphs stay
+     upright while the vessel turns beneath them; pods wear a smaller
+     ring of the same pattern. */
+  function drawCargoRing(x, y, scale, cargo, first) {
+    var r0 = TH.shipRingIn * scale;
+    var r1 = Math.max(TH.shipRingOut, TH.shipRingIn + 2) * scale;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = alphaColor(PARCH, TH.cargoRingAlpha);
+    ctx.lineWidth = TH.shipRingLine;
+    ctx.beginPath();
+    ctx.arc(0, 0, r0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, r1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    for (var k = 0; k < 6; k++) {
+      var ba = (-120 + 60 * k) * Math.PI / 180;
+      ctx.moveTo(Math.cos(ba) * r0, Math.sin(ba) * r0);
+      ctx.lineTo(Math.cos(ba) * r1, Math.sin(ba) * r1);
+    }
+    ctx.stroke();
+    var rm = (r0 + r1) / 2;
+    var gr = TH.cargoRingGlyph * (scale < 1 ? scale * 1.2 : 1);
+    for (var s = 0; s < 6; s++) {
+      var crate = cargo[first + s];
+      if (!crate) continue;
+      var ca = (-90 + 60 * s) * Math.PI / 180;
+      CW.drawGlyph(ctx, crate.type, Math.cos(ca) * rm, Math.sin(ca) * rm,
+        gr, 'solid', PARCH, TH.cargoBold);
+    }
+    ctx.restore();
+  }
+
   // ------------------------------------------------------ colonies (planets)
+  // The Planetary Works (js/planetgen.js) supplies each colony's
+  // portrait. Style weights live in the theme, so the Drawing Office
+  // regrades the whole frontier live; specs are cached per colony and
+  // consecutive spawnings never repeat a recent archetype.
+  var worldMix = null, worldMixKey = '';
+  var worldBudget = { n: 0 };   // texture bakes allowed this frame
+  var recentArchs = [];
+
+  function worldStyleMix() {
+    var key = TH.worldRealistic + '|' + TH.worldCartoon + '|' +
+      TH.worldMagical + '|' + TH.worldInk + '|' + TH.worldPixel +
+      '|' + TH.worldShimmer;
+    if (key !== worldMixKey) {
+      worldMixKey = key;
+      worldMix = CW.PlanetGen.mixStyles({
+        realistic: TH.worldRealistic, cartoon: TH.worldCartoon,
+        magical: TH.worldMagical, ink: TH.worldInk, pixel: TH.worldPixel,
+      });
+      // the route chart is dark and busy; let the enchantment carry
+      worldMix.glow = Math.min(1.3, worldMix.glow * TH.worldShimmer);
+      worldMix.sparkle = Math.min(1.3, worldMix.sparkle * TH.worldShimmer);
+    }
+    return worldMix;
+  }
+
+  /* Fit a freshly forged world for colony duty. The game's visual
+     grammar stays in charge: designated colonies are ringed worlds and
+     commons are not, and moons keep close quarters so the reserve ring
+     and cargo yard retain their authority. */
+  function fitWorldForDuty(spec, special) {
+    if (special) {
+      if (!spec.rings) {
+        var wr = (CW.PlanetGen.hashSeed(spec.seed + ':ring') % 1000) / 1000;
+        spec.rings = {
+          tilt: (wr - 0.5) * 1.0,
+          squash: 0.22 + wr * 0.14,
+          r0: 1.45, r1: 1.85,
+          hue: spec.hue + (wr - 0.5) * 50,
+          sat: 0.3 + wr * 0.25,
+          bands: [
+            { p: 0.15, w: 0.7, a: 0.55 },
+            { p: 0.55, w: 1.0, a: 0.40 },
+            { p: 0.90, w: 0.5, a: 0.50 },
+          ],
+        };
+      } else {
+        spec.rings.r0 = Math.min(spec.rings.r0, 1.50);
+        spec.rings.r1 = Math.min(spec.rings.r1, 1.95);
+      }
+      if (spec.moons.length > 1) spec.moons.length = 1;
+      spec.moons.forEach(function (m) {
+        m.size = Math.min(m.size, 0.18);
+        m.dist = Math.max(spec.rings.r1 + 0.25,
+          Math.min(m.dist, spec.rings.r1 + 0.45));
+      });
+    } else {
+      spec.rings = null;
+      if (spec.moons.length > 2) spec.moons.length = 2;
+      spec.moons.forEach(function (m, i) {
+        m.size = Math.min(m.size, 0.20);
+        m.dist = Math.min(m.dist, 1.7 + i * 0.4);
+      });
+    }
+    var extent = 1.32;
+    if (spec.rings) extent = Math.max(extent, spec.rings.r1 + 0.12);
+    spec.moons.forEach(function (m) {
+      extent = Math.max(extent, m.dist + m.size + 0.08);
+    });
+    spec.extent = Math.min(extent, 3.1);
+  }
+
+  // Worlds are typecast: a colony's world must plausibly lack the very
+  // cargo it depends on — molten worlds thirst, gas colossi cannot
+  // farm, miasmic worlds cry out for medicine.
+  var TYPE_WORLDS = {
+    water: ['lava', 'desert', 'rock'],
+    food: ['gas', 'ice', 'toxic'],
+    energy: ['ice', 'ocean', 'terran'],
+    minerals: ['ocean', 'gas'],
+    machinery: ['terran', 'ocean'],
+    medicine: ['toxic'],
+    knowledge: ['rock', 'desert'],
+    culture: ['ice', 'rock'],
+    biology: ['exotic', 'lava'],
+    luxuries: ['desert', 'rock'],
+  };
+
+  function ensureWorld(c, special) {
+    // regenerate whenever the colony's need changes (industrialisation
+    // transforms a colony in place; its world must follow suit)
+    if (c._world && c._worldType === c.type) return c._world;
+    var choices = TYPE_WORLDS[c.type] || null;
+    var arch = null;
+    if (choices) {
+      var fresh = [];
+      for (var i = 0; i < choices.length; i++) {
+        if (recentArchs.indexOf(choices[i]) < 0) fresh.push(choices[i]);
+      }
+      var pool = fresh.length ? fresh : choices;
+      arch = pool[(Math.random() * pool.length) | 0];
+    }
+    var spec = CW.PlanetGen.generate(
+      'colony:' + c.id + ':' + ((Math.random() * 1e9) | 0),
+      arch ? { arch: arch } : null);
+    recentArchs.push(spec.arch);
+    if (recentArchs.length > 3) recentArchs.shift();
+    fitWorldForDuty(spec, special);
+    c._world = spec;
+    c._worldType = c.type;
+    return spec;
+  }
+
   function drawPlanet(c, R, bright, t) {
+    var special = !CW.TYPE_BY_ID[c.type].common;
+
+    if (TH.worldPlanets >= 0.5 && CW.PlanetGen) {
+      var spec = ensureWorld(c, special);
+      CW.PlanetGen.render(ctx, spec, c.x, c.y, R, worldStyleMix(), t, {
+        budget: worldBudget,
+        axis: TH.worldAxis,
+        oversample: 3,
+        maxTex: 144,
+      });
+      // reserves failing: the world goes dark, exactly as before
+      if (bright < 1) {
+        ctx.fillStyle = darkInk((1 - bright) * 0.6);
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+
+    // classic discs (worldPlanets = 0, or the Works module absent)
     var h = hashId(c.id);
     var tint = PLANET_TINTS[h % PLANET_TINTS.length];
-    var special = !CW.TYPE_BY_ID[c.type].common;
 
     // designated colonies are ringed worlds — the ring peeks out
     // behind the disc, drawn first so the planet occludes its middle
@@ -863,17 +979,32 @@
 
       drawPlanet(c, R, bright, t);
 
+      // the freight band: a faint inner guide line, waiting
+      // consignments adrift between the lines, and the outer line
+      // serving as the reserve gauge
+      var ringIn = TH.bandIn;
+      var ringR = Math.max(TH.bandOut, ringIn + 2);
+
       // hub: an outer orbital works ring
       if (c.isHub) {
         ctx.strokeStyle = alphaColor(PARCH, Math.min(1, 0.85 * bright));
         ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.arc(c.x, c.y, R + SIZES.ringGap + 5.5, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, ringR + 4.5, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // reserve ring / distress countdown
-      var ringR = R + SIZES.ringGap;
+      // band lines: inner guide, and the outer as the empty track
+      ctx.strokeStyle = alphaColor(PARCH, TH.cargoRingAlpha);
+      ctx.lineWidth = TH.bandLine;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, ringIn, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // the outer line brightens with the reserve: full ring, full larder
       if (c.starve === null) {
         var warn = c.reserve <= 0.4;
         ctx.strokeStyle = !warn ? PARCH_DIM
@@ -881,12 +1012,6 @@
         ctx.lineWidth = warn ? TH.ringWidth + 0.6 : TH.ringWidth;
         ctx.beginPath();
         ctx.arc(c.x, c.y, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, c.reserve));
-        ctx.stroke();
-        // ghost of full ring
-        ctx.strokeStyle = alphaColor(PARCH, 0.10);
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2);
         ctx.stroke();
       } else {
         var frac = Math.max(0, c.starve / cfg.starveCountdownSec);
@@ -925,8 +1050,8 @@
       CW.drawGlyph(ctx, c.type, c.x, c.y, gr, 'outline', alphaColor(PARCH, Math.min(1, bright)));
       CW.drawGlyphDetail(ctx, c.type, c.x, c.y, gr, alphaColor(PARCH, bright * 0.5));
 
-      // waiting crates, queued beside the colony
-      drawQueue(game, c, R);
+      // waiting crates, adrift in the freight band
+      drawQueue(game, c, (ringIn + ringR) / 2, t);
 
       // assign-mode target pulse
       if (CW.assignMode === 'hub' && !c.isHub) {
@@ -942,17 +1067,23 @@
     });
   }
 
-  function drawQueue(game, c, R) {
-    var qx = c.x + R + 12, qy = c.y - 9;
-    var maxDraw = 14;
-    for (var i = 0; i < Math.min(c.queue.length, maxDraw); i++) {
-      var col = i % 5, row = Math.floor(i / 5);
-      CW.drawGlyph(ctx, c.queue[i].type, qx + col * 12.5, qy + row * 12.5, SIZES.crateR, 'solid', PARCH);
+  function drawQueue(game, c, orbitR, t) {
+    var n = c.queue.length;
+    if (!n) return;
+    var maxDraw = 12;
+    var m = Math.min(n, maxDraw);
+    // evenly spaced consignments on a slow, patient drift
+    var drift = t * 0.10 + (hashId(c.id) % 63) * 0.1;
+    for (var i = 0; i < m; i++) {
+      var a = drift + (i / m) * Math.PI * 2;
+      CW.drawGlyph(ctx, c.queue[i].type,
+        c.x + Math.cos(a) * orbitR, c.y + Math.sin(a) * orbitR,
+        SIZES.crateR, 'solid', PARCH, TH.cargoBold);
     }
-    if (c.queue.length > maxDraw) {
+    if (n > maxDraw) {
       ctx.fillStyle = PARCH_DIM;
       ctx.font = '9px ' + (CW.themeFont || 'Georgia, serif');
-      ctx.fillText('+' + (c.queue.length - maxDraw), qx, qy + 3 * 12.5);
+      ctx.fillText('+' + (n - maxDraw), c.x - 6, c.y + orbitR + 13);
     }
   }
 
@@ -990,6 +1121,7 @@
   CW.renderFrame = function (game, dt, wallT) {
     if (!ctx) return;
     syncTheme();
+    worldBudget.n = 2;   // world textures bake a couple per frame
     if (canvas.clientWidth !== W || canvas.clientHeight !== H) CW.resizeRenderer();
     updateCamera(game, dt);
     var t = wallT;

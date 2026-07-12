@@ -48,7 +48,22 @@ Keep test scripts in the session scratchpad; they are not committed.
 ## Architecture
 
 Script load order matters (globals, no modules):
-`config → theme → copy → glyphs → audio → sim → render → input → ui → devpanel → main`.
+`config → theme → copy → glyphs → planetgen → audio → sim → render → input → ui → devpanel → main`.
+
+`js/planetgen.js` (`CW.PlanetGen`) is the procedural planet engine —
+pure, DOM-free, shared by the game renderer, the Drawing Office and the
+Planetary Works app (`planets.html`). Colonies are drawn as generated
+worlds: the renderer lazily attaches a spec to each colony (`c._world`),
+avoids repeating any archetype seen in the last three spawnings, strips
+rings from common colonies and guarantees them on designated ones
+("designated colonies are ringed worlds" stays true). Worlds are
+typecast to the cargo they lack (`TYPE_WORLDS` in render.js — molten
+worlds thirst, gas colossi cannot farm) and vary in stature with
+`spec.sizeF`. Style weights, axial lean, size variation and shimmer are
+theme keys (`world*` in THEME_DEFAULTS, the "Generated Worlds" drawer
+in design.html); `worldPlanets: 0` restores the classic tinted discs.
+Ship hull cargo rides the six-berth "consignment ring" around each
+vessel (`cargoRing*` theme keys); pod barges keep deck containers.
 
 **Two tunable layers, two hidden editor apps, two localStorage keys:**
 
@@ -82,8 +97,9 @@ make sure the showcase scene exhibits it.
 **Approved look (Pattern Book 2nd ed., owner's requisition, 2026-07-12):**
 corridors are the *Aurora Conduit* (breathing bidirectional ribbon — never
 add arrows, chevrons, particles or travelling pulses to a corridor);
-vessels are the *Packet* with cargo orbiting as parchment consignment
-chips; lettering is the *Typing Pool* (Courier for display and text).
+vessels are the *Packet*, whose cargo rides the six-berth consignment
+ring (pods wear smaller rings of the same pattern); lettering is the
+*Typing Pool* (Courier for display and text).
 All tunable via theme keys; the relay beacon predates the Pattern Book
 and was deliberately kept.
 

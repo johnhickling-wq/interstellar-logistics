@@ -58,11 +58,27 @@
     halo: 1.0,                 // colony halo glow
     specialRing: 1.0,          // ringed-world ring opacity
     glyphScale: 0.56,          // glyph size as fraction of radius
-    glyphLine: 2.5,
+    glyphLine: 1.9,
 
-    // Reserve rings & feedback
+    // Generated worlds — the Planetary Works supplies the frontier.
+    // Style weights mix like paint, exactly as in planets.html.
+    worldPlanets: 1,           // 1 = procedural worlds, 0 = classic discs
+    worldRealistic: 100,
+    worldCartoon: 0,
+    worldMagical: 100,
+    worldInk: 100,
+    worldPixel: 0,
+    worldAxis: 1.0,            // how much of each world's axial lean shows
+    worldSizeVar: 0.6,         // portion of each world's ±50% size shown
+    worldShimmer: 1.6,         // aura & sparkle boost on the route chart
+
+    // Freight band & reserve gauge (the gauge rides the band's outer
+    // line; ringGap is retired but kept for saved-theme compat)
+    bandIn: 24,                // colony freight band, inner line radius
+    bandOut: 32,               // colony freight band, outer line radius
+    bandLine: 1,               // freight band line weight
     ringGap: 7,
-    ringWidth: 2.6,
+    ringWidth: 2.6,            // reserve gauge line weight
 
     // Hyperspace conduits — the Aurora Conduit (Pattern Book 2nd ed., No. 1;
     // values as filed by the owner from the Drawing Office, 2026-07-12)
@@ -78,14 +94,16 @@
     shipTrim: 0.75,            // brass trim stroke opacity
     exhaust: 2.0,              // engine glow intensity
     trailAlpha: 1.0,           // engine trail strength
-    cargoCell: 4.6,            // orbiting consignment chip size
-    cargoOrbit: 1.65,          // orbit radius as a factor of hull length
-    cargoPace: 0.55,           // orbital period factor
-    orbitLine: 1.0,            // visibility of the dashed orbit path
     livery: 1.0,               // hull finish: 0 bare steel, 1 full paint
+    shipRingIn: 24,            // vessel consignment ring, inner line radius
+    shipRingOut: 32,           // vessel consignment ring, outer line radius
+    shipRingLine: 1,           // vessel ring line weight
+    cargoRingGlyph: 4.6,       // consignment glyph size (aboard ship)
+    cargoRingAlpha: 0.17,      // consignment ring & freight band ink
 
     // Miscellaneous
-    crateR: 5.4,               // waiting-crate glyph size
+    crateR: 4.8,               // waiting-crate glyph size (in the band)
+    cargoBold: 0.3,            // extra stroke weight on cargo glyphs
 
     // Lettering (HUD & memoranda) — the Typing Pool (Pattern Book 2nd ed.)
     uiFont: 'courier',
@@ -163,8 +181,21 @@
       ['specialRing', 'World rings', 'range', 0, 2, 0.05],
       ['glyphScale', 'Glyph size', 'range', 0.3, 0.85, 0.01],
       ['glyphLine', 'Glyph line weight', 'range', 1, 5, 0.1],
-      ['ringGap', 'Reserve ring gap', 'range', 3, 14, 0.5],
-      ['ringWidth', 'Reserve ring weight', 'range', 1, 6, 0.1],
+      ['bandIn', 'Band inner radius', 'range', 12, 34, 0.5],
+      ['bandOut', 'Band outer radius', 'range', 16, 44, 0.5],
+      ['bandLine', 'Band line weight', 'range', 0.4, 3, 0.1],
+      ['ringWidth', 'Gauge line weight', 'range', 1, 6, 0.1],
+    ]},
+    { group: 'Generated Worlds', items: [
+      ['worldPlanets', 'Procedural worlds', 'range', 0, 1, 1],
+      ['worldRealistic', 'Realistic', 'range', 0, 100, 5],
+      ['worldCartoon', 'Cartoon', 'range', 0, 100, 5],
+      ['worldMagical', 'Magical', 'range', 0, 100, 5],
+      ['worldInk', 'Survey Ink', 'range', 0, 100, 5],
+      ['worldPixel', 'Pixel Age', 'range', 0, 100, 5],
+      ['worldAxis', 'Axis variation', 'range', 0, 1, 0.05],
+      ['worldSizeVar', 'Size variation', 'range', 0, 1, 0.05],
+      ['worldShimmer', 'Shimmer', 'range', 0, 3, 0.1],
     ]},
     { group: 'Hyperspace Conduits', items: [
       ['corridorW', 'Ribbon breadth', 'range', 3, 16, 0.2],
@@ -179,12 +210,14 @@
       ['shipTrim', 'Trim brightness', 'range', 0, 1, 0.05],
       ['exhaust', 'Engine glow', 'range', 0, 3, 0.1],
       ['trailAlpha', 'Engine trail', 'range', 0, 3, 0.1],
-      ['cargoCell', 'Consignment chip size', 'range', 3, 7.5, 0.1],
-      ['cargoOrbit', 'Cargo orbit radius', 'range', 0.6, 2.2, 0.05],
-      ['cargoPace', 'Cargo orbit pace', 'range', 0, 2.5, 0.05],
-      ['orbitLine', 'Orbit path line', 'range', 0, 1, 0.05],
       ['livery', 'Livery (steel → paint)', 'range', 0, 1, 0.05],
-      ['crateR', 'Waiting-crate size', 'range', 3.5, 8, 0.1],
+      ['shipRingIn', 'Ring inner radius', 'range', 12, 36, 0.5],
+      ['shipRingOut', 'Ring outer radius', 'range', 16, 46, 0.5],
+      ['shipRingLine', 'Ring line weight', 'range', 0.4, 3, 0.1],
+      ['cargoRingGlyph', 'Ship cargo glyph size', 'range', 2.5, 8, 0.1],
+      ['cargoRingAlpha', 'Ring & band ink', 'range', 0, 0.6, 0.01],
+      ['crateR', 'Band crate size', 'range', 2.5, 8, 0.1],
+      ['cargoBold', 'Cargo glyph weight', 'range', 0, 2, 0.05],
     ]},
   ];
 
