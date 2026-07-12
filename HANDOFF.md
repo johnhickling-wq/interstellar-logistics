@@ -50,6 +50,13 @@ The game is feature-complete and deployed via Netlify (static, no build):
   Spawn variety guard: no archetype repeats within the last three
   spawnings. Commons never have rings; designated colonies always do,
   including when `transformColony` industrialises one in place.
+- The Tuning Office (in-game settings cog) gained a "Chart Appearance"
+  section: planet band inner/outer radius + line & gauge weights, ship
+  ring inner/outer radius + line weight, cargo icon sizes and weight.
+  These edit CW.theme (auto-filed to cw_theme_v1, debounced), ranges
+  single-sourced from THEME_SCHEMA. Ship and planet donuts now have
+  separate geometry keys (shipRing* / band*, replacing cargoRing In/W);
+  cargoBold strokes solid glyphs outward for "weight".
 - Second round of preview feedback: the consignment ring sits further
   out (cargoRingIn 24) and every colony now wears an identical freight
   band — two faint lines, waiting crates adrift and evenly spaced

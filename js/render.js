@@ -639,11 +639,11 @@
      consignment riding in each. Drawn unrotated so the glyphs stay
      upright while the vessel turns beneath them. */
   function drawCargoRing(ship) {
-    var r0 = TH.cargoRingIn, r1 = TH.cargoRingIn + TH.cargoRingW;
+    var r0 = TH.shipRingIn, r1 = Math.max(TH.shipRingOut, r0 + 2);
     ctx.save();
     ctx.translate(ship.x, ship.y);
     ctx.strokeStyle = alphaColor(PARCH, TH.cargoRingAlpha);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = TH.shipRingLine;
     ctx.beginPath();
     ctx.arc(0, 0, r0, 0, Math.PI * 2);
     ctx.stroke();
@@ -664,7 +664,7 @@
       if (!crate) continue;
       var ca = (-90 + 60 * s) * Math.PI / 180;
       CW.drawGlyph(ctx, crate.type, Math.cos(ca) * rm, Math.sin(ca) * rm,
-        TH.cargoRingGlyph, 'solid', PARCH);
+        TH.cargoRingGlyph, 'solid', PARCH, TH.cargoBold);
     }
     ctx.restore();
   }
@@ -901,11 +901,11 @@
 
       drawPlanet(c, R, bright, t);
 
-      // the freight band: a donut identical to the vessels' — a faint
-      // inner guide line, waiting consignments adrift between the
-      // lines, and the outer line serving as the reserve gauge
-      var ringIn = TH.cargoRingIn;
-      var ringR = TH.cargoRingIn + TH.cargoRingW;
+      // the freight band: a faint inner guide line, waiting
+      // consignments adrift between the lines, and the outer line
+      // serving as the reserve gauge
+      var ringIn = TH.bandIn;
+      var ringR = Math.max(TH.bandOut, ringIn + 2);
 
       // hub: an outer orbital works ring
       if (c.isHub) {
@@ -918,7 +918,7 @@
 
       // band lines: inner guide, and the outer as the empty track
       ctx.strokeStyle = alphaColor(PARCH, TH.cargoRingAlpha);
-      ctx.lineWidth = 1;
+      ctx.lineWidth = TH.bandLine;
       ctx.beginPath();
       ctx.arc(c.x, c.y, ringIn, 0, Math.PI * 2);
       ctx.stroke();
@@ -996,12 +996,11 @@
     var m = Math.min(n, maxDraw);
     // evenly spaced consignments on a slow, patient drift
     var drift = t * 0.10 + (hashId(c.id) % 63) * 0.1;
-    var gr = Math.min(SIZES.crateR, TH.cargoRingW * 0.58);
     for (var i = 0; i < m; i++) {
       var a = drift + (i / m) * Math.PI * 2;
       CW.drawGlyph(ctx, c.queue[i].type,
         c.x + Math.cos(a) * orbitR, c.y + Math.sin(a) * orbitR,
-        gr, 'solid', PARCH);
+        SIZES.crateR, 'solid', PARCH, TH.cargoBold);
     }
     if (n > maxDraw) {
       ctx.fillStyle = PARCH_DIM;

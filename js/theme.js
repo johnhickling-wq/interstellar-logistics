@@ -72,10 +72,13 @@
     worldSizeVar: 0.6,         // portion of each world's ±50% size shown
     worldShimmer: 1.6,         // aura & sparkle boost on the route chart
 
-    // Reserve rings & feedback (the gauge rides the freight band's
-    // outer line; ringGap is retired but kept for saved-theme compat)
+    // Freight band & reserve gauge (the gauge rides the band's outer
+    // line; ringGap is retired but kept for saved-theme compat)
+    bandIn: 24,                // colony freight band, inner line radius
+    bandOut: 32,               // colony freight band, outer line radius
+    bandLine: 1,               // freight band line weight
     ringGap: 7,
-    ringWidth: 2.6,
+    ringWidth: 2.6,            // reserve gauge line weight
 
     // Hyperspace conduits
     corridorW: 7.2,
@@ -94,13 +97,15 @@
     exhaust: 1.0,              // engine flame intensity
     trailAlpha: 1.0,           // engine trail strength
     cargoCell: 5.6,            // container size on pod barges
-    cargoRingIn: 24,           // consignment ring inner radius
-    cargoRingW: 8,             // consignment ring depth
-    cargoRingGlyph: 4.6,       // consignment glyph size
-    cargoRingAlpha: 0.17,      // consignment ring ink
+    shipRingIn: 24,            // vessel consignment ring, inner line radius
+    shipRingOut: 32,           // vessel consignment ring, outer line radius
+    shipRingLine: 1,           // vessel ring line weight
+    cargoRingGlyph: 4.6,       // consignment glyph size (aboard ship)
+    cargoRingAlpha: 0.17,      // consignment ring & freight band ink
 
     // Miscellaneous
-    crateR: 5.4,               // waiting-crate glyph size
+    crateR: 4.8,               // waiting-crate glyph size (in the band)
+    cargoBold: 0.3,            // extra stroke weight on cargo glyphs
 
     // Lettering (HUD & memoranda)
     uiFont: 'iowan',
@@ -176,7 +181,10 @@
       ['specialRing', 'World rings', 'range', 0, 2, 0.05],
       ['glyphScale', 'Glyph size', 'range', 0.3, 0.85, 0.01],
       ['glyphLine', 'Glyph line weight', 'range', 1, 5, 0.1],
-      ['ringWidth', 'Reserve ring weight', 'range', 1, 6, 0.1],
+      ['bandIn', 'Band inner radius', 'range', 12, 34, 0.5],
+      ['bandOut', 'Band outer radius', 'range', 16, 44, 0.5],
+      ['bandLine', 'Band line weight', 'range', 0.4, 3, 0.1],
+      ['ringWidth', 'Gauge line weight', 'range', 1, 6, 0.1],
     ]},
     { group: 'Generated Worlds', items: [
       ['worldPlanets', 'Procedural worlds', 'range', 0, 1, 1],
@@ -206,11 +214,13 @@
       ['exhaust', 'Exhaust flame', 'range', 0, 3, 0.1],
       ['trailAlpha', 'Engine trail', 'range', 0, 3, 0.1],
       ['cargoCell', 'Barge container size', 'range', 4, 7.5, 0.1],
-      ['cargoRingIn', 'Cargo ring radius', 'range', 12, 32, 0.5],
-      ['cargoRingW', 'Cargo ring depth', 'range', 4, 16, 0.5],
-      ['cargoRingGlyph', 'Cargo glyph size', 'range', 2.5, 8, 0.1],
-      ['cargoRingAlpha', 'Cargo ring ink', 'range', 0, 0.6, 0.01],
-      ['crateR', 'Waiting-crate size', 'range', 3.5, 8, 0.1],
+      ['shipRingIn', 'Ring inner radius', 'range', 12, 36, 0.5],
+      ['shipRingOut', 'Ring outer radius', 'range', 16, 46, 0.5],
+      ['shipRingLine', 'Ring line weight', 'range', 0.4, 3, 0.1],
+      ['cargoRingGlyph', 'Ship cargo glyph size', 'range', 2.5, 8, 0.1],
+      ['cargoRingAlpha', 'Ring & band ink', 'range', 0, 0.6, 0.01],
+      ['crateR', 'Band crate size', 'range', 2.5, 8, 0.1],
+      ['cargoBold', 'Cargo glyph weight', 'range', 0, 2, 0.05],
     ]},
   ];
 

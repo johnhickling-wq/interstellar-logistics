@@ -11,6 +11,8 @@
   var taps = [];
   var metricsEl = null;
   var inputs = {};
+  var themeInputs = {};
+  var themeSaveTimer = null;
 
   function build() {
     panel = document.createElement('div');
@@ -78,6 +80,56 @@
         });
       });
     });
+
+    // chart appearance: a handful of THEME values kept within reach of
+    // the duty officer. Ranges come from THEME_SCHEMA; changes file
+    // themselves to the browser at once (the Drawing Office holds the
+    // full ledger).
+    var aGroup = section(body, 'Chart Appearance');
+    var APPEAR = [
+      ['bandIn', 'Planet band: inner radius'],
+      ['bandOut', 'Planet band: outer radius'],
+      ['bandLine', 'Planet band: line weight'],
+      ['ringWidth', 'Planet band: gauge weight'],
+      ['shipRingIn', 'Ship ring: inner radius'],
+      ['shipRingOut', 'Ship ring: outer radius'],
+      ['shipRingLine', 'Ship ring: line weight'],
+      ['cargoRingGlyph', 'Cargo icons: size aboard ship'],
+      ['crateR', 'Cargo icons: size in the band'],
+      ['cargoBold', 'Cargo icons: weight'],
+    ];
+    var themeRange = {};
+    CW.THEME_SCHEMA.forEach(function (group) {
+      group.items.forEach(function (item) { themeRange[item[0]] = item; });
+    });
+    APPEAR.forEach(function (def) {
+      var key = def[0], sch = themeRange[key];
+      themeInputs[key] = sliderRow(aGroup, def[1], sch[3], sch[4], sch[5],
+        CW.theme[key], function (v) {
+          CW.theme[key] = v;
+          clearTimeout(themeSaveTimer);
+          themeSaveTimer = setTimeout(function () { CW.saveTheme(CW.theme); }, 400);
+        });
+    });
+    var aRow = document.createElement('div');
+    aRow.className = 'dp-btnrow';
+    aGroup.appendChild(aRow);
+    var aReset = document.createElement('button');
+    aReset.className = 'dp-btn';
+    aReset.textContent = 'Factory appearance';
+    aReset.addEventListener('click', function () {
+      APPEAR.forEach(function (def) {
+        CW.theme[def[0]] = CW.THEME_DEFAULTS[def[0]];
+      });
+      CW.saveTheme(CW.theme);
+      refreshSliders();
+      flash(aReset, 'Restored.');
+    });
+    aRow.appendChild(aReset);
+    var aNote = document.createElement('div');
+    aNote.className = 'dp-note';
+    aNote.textContent = 'Appearance values file themselves at once and are honoured by the Drawing Office.';
+    aGroup.appendChild(aNote);
 
     // persistence controls
     var pGroup = section(body, 'Filing');
@@ -170,6 +222,10 @@
       if (key.slice(0, 2) === '__') return;
       inputs[key].input.value = CW.config[key];
       inputs[key].val.textContent = fmt(CW.config[key]);
+    });
+    Object.keys(themeInputs).forEach(function (key) {
+      themeInputs[key].input.value = CW.theme[key];
+      themeInputs[key].val.textContent = fmt(CW.theme[key]);
     });
   }
 
