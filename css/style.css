@@ -9,8 +9,10 @@
   --parch-faint: rgba(233, 224, 201, 0.22);
   --brass: #c9a227;
   --red: #d4574f;
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  --sans: ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+  /* The Typing Pool (Pattern Book 2nd ed.): Courier for display and text.
+     CW.applyTheme() overrides both variables from the saved theme. */
+  --serif: "Courier New", Courier, monospace;
+  --sans: "Courier New", Courier, monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -273,7 +275,7 @@ html, body {
   font-family: var(--serif);
   font-weight: 500;
   font-size: clamp(20px, 4.6vw, 34px);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.23em;
   margin: 12px 0 4px;
 }
 .panel h2 {
@@ -332,7 +334,7 @@ html, body {
 
 .howto {
   margin-top: 18px;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.8;
   color: var(--parch-dim);
 }
@@ -369,7 +371,7 @@ html, body {
   margin-top: 2px;
 }
 .manifest-quip { font-size: 9.5px; color: var(--parch-dim); line-height: 1.45; margin-top: 2px; }
-.manifest-note { font-size: 11.5px; color: var(--parch-dim); line-height: 1.6; max-width: 540px; margin: 0 auto; }
+.manifest-note { font-size: 12.5px; color: var(--parch-dim); line-height: 1.6; max-width: 560px; margin: 0 auto; }
 .manifest-note.dim { font-size: 9.5px; opacity: 0.75; margin-top: 6px; }
 #btn-manifest-close { margin-top: 14px; }
 
